@@ -1,5 +1,6 @@
 server:
   port: 8081
+  address: 127.0.0.1
 
 spring:
   application:
@@ -9,6 +10,9 @@ spring:
     port: ${RABBIT_PORT:5672}
     username: ${RABBIT_USER}
     password: ${RABBIT_PASS}
+
+rabbitmq-management:
+  url: ${RABBIT_MGMT_URL:http://localhost:15672}
 
 management:
   endpoints:
