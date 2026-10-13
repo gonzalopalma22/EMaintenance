@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.amqp.core.AmqpAdmin;
+import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Exchange;
@@ -16,6 +17,7 @@ import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
+import com.mantenimiento.admin_rabbitmq.dto.BindingRequest;
 import com.mantenimiento.admin_rabbitmq.dto.ExchangeRequest;
 import com.mantenimiento.admin_rabbitmq.dto.QueueRequest;
 import com.mantenimiento.admin_rabbitmq.exception.ConflictException;
@@ -115,5 +117,45 @@ public class RabbitAdminService {
                     "La cola tiene " + messages + " mensajes. Usa ?force=true para eliminarla");
         }
         amqpAdmin.deleteQueue(name);
+    }
+
+    // ---------- Bindings ----------
+
+    private boolean queueExists(String name) {
+        return amqpAdmin.getQueueProperties(name) != null;
+    }
+
+    private void validateBinding(BindingRequest req) {
+        if (req.exchange().startsWith("amq.") || req.destination().startsWith("amq.")) {
+            throw new ForbiddenOperationException(
+                    "No se permiten bindings sobre recursos del sistema (amq.*)");
+        }
+        if (!exchangeExists(req.exchange())) {
+            throw new NotFoundException("El exchange no existe: " + req.exchange());
+        }
+        boolean destExists = "queue".equals(req.destinationType())
+                ? queueExists(req.destination())
+                : exchangeExists(req.destination());
+        if (!destExists) {
+            throw new NotFoundException("El destino no existe: " + req.destination());
+        }
+    }
+
+    private Binding buildBinding(BindingRequest req) {
+        String rk = req.routingKey() == null ? "" : req.routingKey();
+        Binding.DestinationType type = "queue".equals(req.destinationType())
+                ? Binding.DestinationType.QUEUE
+                : Binding.DestinationType.EXCHANGE;
+        return new Binding(req.destination(), type, req.exchange(), rk, null);
+    }
+
+    public void createBinding(BindingRequest req) {
+        validateBinding(req);
+        amqpAdmin.declareBinding(buildBinding(req));
+    }
+
+    public void deleteBinding(BindingRequest req) {
+        validateBinding(req);
+        amqpAdmin.removeBinding(buildBinding(req));
     }
 }
