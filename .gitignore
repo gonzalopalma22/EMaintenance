@@ -1,0 +1,66 @@
+# ===== Secretos y entorno =====
+.env
+*.env.local
+!.env.example
+
+# ===== Java / Maven =====
+target/
+*.class
+*.jar
+*.war
+*.log
+hs_err_pid*
+.mvn/wrapper/maven-wrapper.jar
+!**/.mvn/wrapper/maven-wrapper.jar
+
+# ===== Spring Boot =====
+application-local.yml
+application-local.properties
+application-secret*.yml
+application-secret*.properties
+
+# ===== Python / ML =====
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+*.pkl
+*.joblib
+*.onnx
+*.h5
+.pytest_cache/
+.mypy_cache/
+
+# ===== Datasets (pesados, se descargan aparte) =====
+ml/data/raw/
+ml/data/processed/
+*.csv
+*.parquet
+
+# ===== Node / Frontend =====
+node_modules/
+dist/
+build/
+.angular/
+.next/
+coverage/
+npm-debug.log*
+
+# ===== Terraform / infraestructura =====
+infra/**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
+
+# ===== IDEs =====
+.idea/
+*.iml
+.vscode/
+.vs/
+*.swp
+
+# ===== Sistema operativo =====
+.DS_Store
+Thumbs.db
