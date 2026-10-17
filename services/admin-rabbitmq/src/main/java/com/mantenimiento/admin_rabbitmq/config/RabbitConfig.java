@@ -13,4 +13,6 @@ public class RabbitConfig {
     public AmqpAdmin amqpAdmin(ConnectionFactory connectionFactory) {
         return new RabbitAdmin(connectionFactory);
     }
+
+    
 }
