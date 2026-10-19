@@ -1,0 +1,30 @@
+server:
+  port: 8085
+  address: 127.0.0.1
+
+spring:
+  application:
+    name: simulador-sensores
+  rabbitmq:
+    host: ${RABBIT_HOST:localhost}
+    port: ${RABBIT_PORT:5672}
+    username: ${RABBIT_USER}
+    password: ${RABBIT_PASS}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+
+simulador:
+  intervalo-ms: 3000
+  equipos: camion-01,camion-02,camion-03
+  porcentaje-invalidas: 3
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
