@@ -5,6 +5,14 @@ server:
 spring:
   application:
     name: ordenes-trabajo
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://login.microsoftonline.com/${AZURE_TENANT_ID}/v2.0
+          audiences: ${AZURE_API_CLIENT_ID}
+ 
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${POSTGRES_DB}
     username: ${POSTGRES_USER}

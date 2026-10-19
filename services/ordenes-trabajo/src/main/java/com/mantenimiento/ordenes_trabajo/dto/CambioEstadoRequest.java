@@ -5,8 +5,8 @@ import jakarta.validation.constraints.Pattern;
 
 public record CambioEstadoRequest(
         @NotBlank
-        @Pattern(regexp = "^(ASIGNADA|EN_CURSO|CERRADA)$",
-                 message = "Estado debe ser ASIGNADA, EN_CURSO o CERRADA")
+        @Pattern(regexp = "^(ASIGNADA|EN_CURSO|REALIZADA|CERRADA)$",
+                message = "Estado debe ser ASIGNADA, EN_CURSO, REALIZADA o CERRADA")
         String estado,
         String asignadoA
 ) {}
