@@ -58,17 +58,49 @@ public class OrdenTrabajoController {
         this.repository = repository;
     }
 
+    private static boolean esAdmin(Authentication auth) {
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_Admin".equals(a.getAuthority()));
+    }
+
+    private static boolean esElAsignado(OrdenTrabajo o, String usuario) {
+        return usuario != null && o.getAsignadoA() != null
+                && o.getAsignadoA().trim().equalsIgnoreCase(usuario.trim());
+    }
+
     @GetMapping
-    public List<OrdenTrabajo> listar(@RequestParam(required = false) String estado) {
+    public List<OrdenTrabajo> listar(@RequestParam(required = false) String estado,
+                                     @AuthenticationPrincipal Jwt jwt,
+                                     Authentication auth) {
+        if (esAdmin(auth)) {
+            return estado == null
+                    ? repository.findTop100ByOrderByCreadaEnDesc()
+                    : repository.findTop100ByEstadoOrderByCreadaEnDesc(estado);
+        }
+
+        // Usuario: solo las órdenes asignadas a él
+        String usuario = jwt.getClaimAsString("preferred_username");
+        if (usuario == null || usuario.isBlank()) {
+            return List.of();
+        }
+        usuario = usuario.trim();
         return estado == null
-                ? repository.findTop100ByOrderByCreadaEnDesc()
-                : repository.findTop100ByEstadoOrderByCreadaEnDesc(estado);
+                ? repository.findTop100ByAsignadoAIgnoreCaseOrderByCreadaEnDesc(usuario)
+                : repository.findTop100ByAsignadoAIgnoreCaseAndEstadoOrderByCreadaEnDesc(usuario, estado);
     }
 
     @GetMapping("/{id}")
-    public OrdenTrabajo obtener(@PathVariable UUID id) {
-        return repository.findById(id)
+    public OrdenTrabajo obtener(@PathVariable UUID id,
+                                @AuthenticationPrincipal Jwt jwt,
+                                Authentication auth) {
+        OrdenTrabajo o = repository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Orden no existe: " + id));
+
+        if (!esAdmin(auth) && !esElAsignado(o, jwt.getClaimAsString("preferred_username"))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "No tienes acceso a esta orden");
+        }
+        return o;
     }
 
     @PatchMapping("/{id}/estado")
@@ -90,19 +122,14 @@ public class OrdenTrabajoController {
 
         // 2. Quién puede hacerla (403)
         String clave = actual + ">" + nuevo;
-        boolean esAdmin = auth.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_Admin".equals(a.getAuthority()));
-        String usuario = jwt.getClaimAsString("preferred_username");
 
         if (SOLO_ADMIN.contains(clave)) {
-            if (!esAdmin) {
+            if (!esAdmin(auth)) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                         "Solo un Admin puede hacer " + actual + " -> " + nuevo);
             }
         } else if (SOLO_ASIGNADO.contains(clave)) {
-            boolean esElAsignado = usuario != null && o.getAsignadoA() != null
-                    && o.getAsignadoA().trim().equalsIgnoreCase(usuario.trim());
-            if (!esElAsignado) {
+            if (!esElAsignado(o, jwt.getClaimAsString("preferred_username"))) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                         "Solo quien tiene asignada la orden puede hacer " + actual + " -> " + nuevo);
             }

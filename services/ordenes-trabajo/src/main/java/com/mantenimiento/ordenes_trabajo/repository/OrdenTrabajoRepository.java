@@ -14,4 +14,9 @@ public interface OrdenTrabajoRepository extends JpaRepository<OrdenTrabajo, UUID
     List<OrdenTrabajo> findTop100ByOrderByCreadaEnDesc();
 
     List<OrdenTrabajo> findTop100ByEstadoOrderByCreadaEnDesc(String estado);
+
+    List<OrdenTrabajo> findTop100ByAsignadoAIgnoreCaseOrderByCreadaEnDesc(String asignadoA);
+
+    List<OrdenTrabajo> findTop100ByAsignadoAIgnoreCaseAndEstadoOrderByCreadaEnDesc(
+            String asignadoA, String estado);
 }
