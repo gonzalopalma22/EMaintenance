@@ -18,6 +18,15 @@ spring:
     port: ${RABBIT_PORT:5672}
     username: ${RABBIT_USER}
     password: ${RABBIT_PASS}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: false
 
 management:
   endpoints:
