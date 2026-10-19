@@ -2,8 +2,8 @@ package com.mantenimiento.telemetria.messaging;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
 import com.mantenimiento.telemetria.dto.LecturaEvent;
@@ -19,12 +19,18 @@ public class LecturaConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(LecturaConsumer.class);
 
+    private static final String EVENTOS_EXCHANGE = "mantenimiento.eventos.exchange";
+    private static final String LECTURA_GUARDADA_RK = "lectura.guardada";
+
     private final LecturaRepository repository;
     private final Validator validator;
+    private final RabbitTemplate rabbitTemplate;
 
-    public LecturaConsumer(LecturaRepository repository, Validator validator) {
+    public LecturaConsumer(LecturaRepository repository, Validator validator,
+                           RabbitTemplate rabbitTemplate) {
         this.repository = repository;
         this.validator = validator;
+        this.rabbitTemplate = rabbitTemplate;
     }
 
     @RabbitListener(queues = "mantenimiento.lecturas.queue")
@@ -45,5 +51,8 @@ public class LecturaConsumer {
                 e.tipo(), e.valor(), e.timestamp()));
         log.info("Lectura guardada. eventId={} equipo={} tipo={} valor={}",
                 e.eventId(), e.equipoId(), e.tipo(), e.valor());
+
+        rabbitTemplate.convertAndSend(EVENTOS_EXCHANGE, LECTURA_GUARDADA_RK, e);
+        log.info("Evento lectura.guardada publicado. eventId={}", e.eventId());
     }
 }
