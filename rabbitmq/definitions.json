@@ -1,0 +1,334 @@
+{
+  "bindings": [
+    {
+      "arguments": {},
+      "destination": "mantenimiento.alertas-entrada.dlq",
+      "destination_type": "queue",
+      "routing_key": "mantenimiento.alertas-entrada.dead",
+      "source": "mantenimiento.alertas-entrada.dlx",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "destination": "mantenimiento.alertas-entrada.dlq.audit.queue",
+      "destination_type": "queue",
+      "routing_key": "mantenimiento.alertas-entrada.dead",
+      "source": "mantenimiento.alertas-entrada.dlx",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "destination": "mantenimiento.alertas-prediccion.dlq",
+      "destination_type": "queue",
+      "routing_key": "mantenimiento.alertas-prediccion.dead",
+      "source": "mantenimiento.alertas-prediccion.dlx",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "destination": "mantenimiento.alertas-prediccion.dlq.audit.queue",
+      "destination_type": "queue",
+      "routing_key": "mantenimiento.alertas-prediccion.dead",
+      "source": "mantenimiento.alertas-prediccion.dlx",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "destination": "mantenimiento.ordenes-entrada.queue",
+      "destination_type": "queue",
+      "routing_key": "alerta.generada",
+      "source": "mantenimiento.eventos.exchange",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "destination": "mantenimiento.alertas-entrada.queue",
+      "destination_type": "queue",
+      "routing_key": "lectura.guardada",
+      "source": "mantenimiento.eventos.exchange",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "destination": "mantenimiento.prediccion-entrada.queue",
+      "destination_type": "queue",
+      "routing_key": "lectura.guardada",
+      "source": "mantenimiento.eventos.exchange",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "destination": "mantenimiento.alertas-prediccion.queue",
+      "destination_type": "queue",
+      "routing_key": "prediccion.generada",
+      "source": "mantenimiento.eventos.exchange",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "destination": "mantenimiento.lecturas.dlq",
+      "destination_type": "queue",
+      "routing_key": "mantenimiento.lecturas.dead",
+      "source": "mantenimiento.lecturas.dlx",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "destination": "mantenimiento.lecturas.dlq.audit.queue",
+      "destination_type": "queue",
+      "routing_key": "mantenimiento.lecturas.dead",
+      "source": "mantenimiento.lecturas.dlx",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "destination": "mantenimiento.lecturas.queue",
+      "destination_type": "queue",
+      "routing_key": "lectura.#",
+      "source": "mantenimiento.lecturas.exchange",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "destination": "mantenimiento.ordenes-entrada.dlq",
+      "destination_type": "queue",
+      "routing_key": "mantenimiento.ordenes-entrada.dead",
+      "source": "mantenimiento.ordenes-entrada.dlx",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "destination": "mantenimiento.ordenes-entrada.dlq.audit.queue",
+      "destination_type": "queue",
+      "routing_key": "mantenimiento.ordenes-entrada.dead",
+      "source": "mantenimiento.ordenes-entrada.dlx",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "destination": "mantenimiento.prediccion-entrada.dlq",
+      "destination_type": "queue",
+      "routing_key": "mantenimiento.prediccion-entrada.dead",
+      "source": "mantenimiento.prediccion-entrada.dlx",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "destination": "mantenimiento.prediccion-entrada.dlq.audit.queue",
+      "destination_type": "queue",
+      "routing_key": "mantenimiento.prediccion-entrada.dead",
+      "source": "mantenimiento.prediccion-entrada.dlx",
+      "vhost": "/"
+    }
+  ],
+  "queues": [
+    {
+      "arguments": {
+        "x-dead-letter-exchange": "mantenimiento.ordenes-entrada.dlx",
+        "x-dead-letter-routing-key": "mantenimiento.ordenes-entrada.dead"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.ordenes-entrada.queue",
+      "type": "classic",
+      "vhost": "/"
+    },
+    {
+      "arguments": {
+        "x-dead-letter-exchange": "mantenimiento.alertas-prediccion.dlx",
+        "x-dead-letter-routing-key": "mantenimiento.alertas-prediccion.dead"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.alertas-prediccion.queue",
+      "type": "classic",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.prediccion-entrada.dlq.audit.queue",
+      "type": "classic",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.ordenes-entrada.dlq",
+      "type": "classic",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.ordenes-entrada.dlq.audit.queue",
+      "type": "classic",
+      "vhost": "/"
+    },
+    {
+      "arguments": {
+        "x-dead-letter-exchange": "mantenimiento.lecturas.dlx",
+        "x-dead-letter-routing-key": "mantenimiento.lecturas.dead"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.lecturas.queue",
+      "type": "classic",
+      "vhost": "/"
+    },
+    {
+      "arguments": {
+        "x-dead-letter-exchange": "mantenimiento.alertas-entrada.dlx",
+        "x-dead-letter-routing-key": "mantenimiento.alertas-entrada.dead"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.alertas-entrada.queue",
+      "type": "classic",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.alertas-entrada.dlq",
+      "type": "classic",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.alertas-prediccion.dlq.audit.queue",
+      "type": "classic",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.alertas-prediccion.dlq",
+      "type": "classic",
+      "vhost": "/"
+    },
+    {
+      "arguments": {
+        "x-dead-letter-exchange": "mantenimiento.prediccion-entrada.dlx",
+        "x-dead-letter-routing-key": "mantenimiento.prediccion-entrada.dead"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.prediccion-entrada.queue",
+      "type": "classic",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.lecturas.dlq",
+      "type": "classic",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.prediccion-entrada.dlq",
+      "type": "classic",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.lecturas.dlq.audit.queue",
+      "type": "classic",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.alertas-entrada.dlq.audit.queue",
+      "type": "classic",
+      "vhost": "/"
+    }
+  ],
+  "parameters": [],
+  "policies": [],
+  "rabbitmq_version": "3.13.7",
+  "rabbit_version": "3.13.7",
+  "exchanges": [
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.alertas-prediccion.dlx",
+      "type": "direct",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.alertas-entrada.dlx",
+      "type": "direct",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.prediccion-entrada.dlx",
+      "type": "direct",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.lecturas.exchange",
+      "type": "topic",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.eventos.exchange",
+      "type": "topic",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.lecturas.dlx",
+      "type": "direct",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "mantenimiento.ordenes-entrada.dlx",
+      "type": "direct",
+      "vhost": "/"
+    }
+  ],
+  "vhosts": [
+    {
+      "limits": [],
+      "metadata": {
+        "description": "Default virtual host",
+        "tags": []
+      },
+      "name": "/"
+    }
+  ],
+  "global_parameters": []
+}
