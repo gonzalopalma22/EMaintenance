@@ -22,3 +22,11 @@ management:
   endpoint:
     health:
       show-details: never
+
+azure:
+  tenant-id: ${AZURE_TENANT_ID}
+  api-client-id: ${AZURE_API_CLIENT_ID}
+
+app:
+  cors:
+    allowed-origins: http://localhost:5173
