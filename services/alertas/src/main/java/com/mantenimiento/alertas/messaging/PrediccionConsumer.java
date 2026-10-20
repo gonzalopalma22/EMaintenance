@@ -1,0 +1,59 @@
+package com.mantenimiento.alertas.messaging;
+
+import java.time.Instant;
+import java.util.UUID;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.stereotype.Component;
+
+import com.mantenimiento.alertas.dto.AlertaEvent;
+import com.mantenimiento.alertas.dto.PrediccionEvent;
+import com.mantenimiento.alertas.model.Alerta;
+import com.mantenimiento.alertas.repository.AlertaRepository;
+
+@Component
+public class PrediccionConsumer {
+
+    private static final Logger log = LoggerFactory.getLogger(PrediccionConsumer.class);
+    private static final String TIPO = "ANOMALIA";
+
+    private final AlertaRepository repository;
+    private final RabbitTemplate rabbitTemplate;
+
+    public PrediccionConsumer(AlertaRepository repository, RabbitTemplate rabbitTemplate) {
+        this.repository = repository;
+        this.rabbitTemplate = rabbitTemplate;
+    }
+
+    @RabbitListener(queues = "mantenimiento.alertas-prediccion.queue")
+    public void recibir(PrediccionEvent p) {
+        if (p.equipoId() == null || p.lecturaEventId() == null) {
+            throw new IllegalArgumentException("Prediccion incompleta: " + p);
+        }
+        if (!Boolean.TRUE.equals(p.anomalia())) {
+            return;
+        }
+        if (repository.existsByEquipoIdAndTipoAndEstado(p.equipoId(), TIPO, "ABIERTA")) {
+            return; 
+        }
+        if (repository.existsByLecturaEventId(p.lecturaEventId())) {
+            return;
+        }
+        UUID id = UUID.randomUUID();
+        Instant ahora = Instant.now();
+        double valor = p.valor() == null ? 0 : p.valor();
+        double score = p.score() == null ? 0 : p.score();
+
+        repository.save(new Alerta(id, p.lecturaEventId(), p.equipoId(), "modelo-ml",
+                TIPO, valor, score, "MEDIA", ahora));
+
+        rabbitTemplate.convertAndSend("mantenimiento.eventos.exchange", "alerta.generada",
+                new AlertaEvent(id, p.lecturaEventId(), p.equipoId(), "modelo-ml",
+                        TIPO, valor, score, "MEDIA", ahora));
+
+        log.warn("ALERTA ANOMALIA. equipo={} valor={} score={}", p.equipoId(), valor, score);
+    }
+}

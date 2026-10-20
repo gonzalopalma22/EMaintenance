@@ -31,4 +31,9 @@ public class DlqLogger {
                 message.getMessageProperties().getMessageId(),
                 cola, motivo, intentos, Instant.now());
     }
+
+    @RabbitListener(queues = "mantenimiento.alertas-prediccion.dlq.audit.queue")
+    public void registrarPrediccion(Message message) {
+    registrar(message);
+}
 }

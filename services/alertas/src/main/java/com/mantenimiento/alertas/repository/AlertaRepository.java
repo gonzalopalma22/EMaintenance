@@ -14,4 +14,6 @@ public interface AlertaRepository extends JpaRepository<Alerta, UUID> {
     List<Alerta> findTop100ByEstadoOrderByGeneradaEnDesc(String estado);
 
     List<Alerta> findTop100ByOrderByGeneradaEnDesc();
+
+    boolean existsByEquipoIdAndTipoAndEstado(String equipoId, String tipo, String estado);
 }

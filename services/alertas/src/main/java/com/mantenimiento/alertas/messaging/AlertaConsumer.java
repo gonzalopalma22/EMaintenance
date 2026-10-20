@@ -41,6 +41,10 @@ public class AlertaConsumer {
             log.info("Alerta duplicada ignorada. lecturaEventId={}", e.eventId());
             return;
         }
+        if (repository.existsByEquipoIdAndTipoAndEstado(e.equipoId(), "temperatura", "ABIERTA")) {
+            log.info("Ya hay alerta de temperatura abierta. equipo={}", e.equipoId());
+            return;
+        }
         String severidad = e.valor() > 150 ? "CRITICA" : "ALTA";
         UUID alertaId = UUID.randomUUID();
         Instant ahora = Instant.now();
