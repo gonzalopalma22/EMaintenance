@@ -1,7 +1,10 @@
 # ===== Secretos y entorno =====
 .env
-*.env.local
+.env.*
 !.env.example
+
+# ===== Docker (solo local) =====
+docker-compose.override.yml
 
 # ===== Java / Maven =====
 target/
@@ -10,7 +13,6 @@ target/
 *.war
 *.log
 hs_err_pid*
-.mvn/wrapper/maven-wrapper.jar
 !**/.mvn/wrapper/maven-wrapper.jar
 
 # ===== Spring Boot =====
@@ -31,6 +33,9 @@ venv/
 *.h5
 .pytest_cache/
 .mypy_cache/
+
+# Excepción: el modelo que usa prediccion-ml debe ir en el repo
+!services/prediccion-ml/modelo/*.joblib
 
 # ===== Datasets (pesados, se descargan aparte) =====
 ml/data/raw/
