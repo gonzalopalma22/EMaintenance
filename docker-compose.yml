@@ -2,9 +2,6 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBIT_PASS}
@@ -14,13 +11,38 @@ services:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 12
+    restart: unless-stopped
+
+  # Importa colas, exchanges y bindings una vez que RabbitMQ está listo
+  rabbit-init:
+    image: curlimages/curl:latest
+    command:
+      - "-sf"
+      - "--retry"
+      - "10"
+      - "--retry-delay"
+      - "3"
+      - "--retry-all-errors"
+      - "-u"
+      - "${RABBIT_USER}:${RABBIT_PASS}"
+      - "-X"
+      - "POST"
+      - "-H"
+      - "Content-Type: application/json"
+      - "--data-binary"
+      - "@/defs/definitions.json"
+      - "http://rabbitmq:15672/api/definitions"
+    volumes:
+      - ./rabbitmq/definitions.json:/defs/definitions.json:ro
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: "no"
 
   postgres:
     image: postgres:16
     container_name: postgres
-    ports:
-      - "5433:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -28,10 +50,117 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+    restart: unless-stopped
+
+  admin-rabbitmq:
+    build: ./services/admin-rabbitmq
+    environment: &spring-comun
+      SERVER_ADDRESS: 0.0.0.0
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+      AZURE_API_CLIENT_ID: ${AZURE_API_CLIENT_ID}
+      RABBIT_HOST: rabbitmq
+      RABBIT_USER: ${RABBIT_USER}
+      RABBIT_PASS: ${RABBIT_PASS}
+      RABBIT_MGMT_URL: http://rabbitmq:15672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  telemetria:
+    build: ./services/telemetria
+    environment:
+      <<: *spring-comun
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      rabbit-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  alertas:
+    build: ./services/alertas
+    environment:
+      <<: *spring-comun
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      rabbit-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ordenes-trabajo:
+    build: ./services/ordenes-trabajo
+    environment:
+      <<: *spring-comun
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      rabbit-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  simulador-sensores:
+    build: ./services/simulador-sensores
+    environment:
+      <<: *spring-comun
+    depends_on:
+      rabbit-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  prediccion-ml:
+    build: ./services/prediccion-ml
+    environment:
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+      AZURE_API_CLIENT_ID: ${AZURE_API_CLIENT_ID}
+      RABBIT_HOST: rabbitmq
+      RABBIT_USER: ${RABBIT_USER}
+      RABBIT_PASS: ${RABBIT_PASS}
+    depends_on:
+      rabbit-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  api-gateway:
+    build: ./services/api-gateway
+    environment:
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      ADMIN_RABBITMQ_URL: http://admin-rabbitmq:8081
+      TELEMETRIA_URL: http://telemetria:8082
+      ALERTAS_URL: http://alertas:8083
+      ORDENES_URL: http://ordenes-trabajo:8084
+      SIMULADOR_URL: http://simulador-sensores:8085
+      PREDICCION_URL: http://prediccion-ml:8086
+    ports:
+      - "8080:8080"
+    depends_on:
+      - admin-rabbitmq
+      - telemetria
+      - alertas
+      - ordenes-trabajo
+      - simulador-sensores
+      - prediccion-ml
+    restart: unless-stopped
 
 volumes:
   rabbit_data:
