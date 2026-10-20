@@ -5,10 +5,13 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 import aio_pika
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 
 from app import config
 from app.modelo import Predictor
+
+# Importamos nuestro validador de Entra ID
+from app.security import require_roles
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s : %(message)s")
@@ -16,7 +19,6 @@ log = logging.getLogger("prediccion-ml")
 
 predictor = Predictor()
 estado = {"conectado": False, "procesadas": 0, "rechazadas": 0}
-
 
 async def procesar(message: aio_pika.IncomingMessage, exchange: aio_pika.Exchange):
     # requeue=False: si falla, RabbitMQ lo manda al DLX configurado en la cola
@@ -78,8 +80,23 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="prediccion-ml", lifespan=lifespan)
 
-
+# 1. Endpoint PÚBLICO (No pide token, igual que en Spring Boot)
 @app.get("/health")
 def health():
     return {"status": "UP" if estado["conectado"] else "DOWN", **estado,
             "modeloVersion": predictor.version}
+
+
+# 2. Endpoint PROTEGIDO (Exige el token de Entra ID)
+@app.get("/api/predicciones/estado")
+async def estado_predicciones(usuario_token: dict = Depends(require_roles("admin", "user"))):
+    # Si llega a esta línea, require_roles ya confirmó que el JWT de Microsoft es legítimo
+    nombre = usuario_token.get("name", "Usuario")
+    roles = usuario_token.get("roles", [])
+    
+    return {
+        "mensaje": f"Acceso autorizado para {nombre}",
+        "roles": roles,
+        "estadisticas_motor": estado,
+        "version_modelo": predictor.version
+    }
