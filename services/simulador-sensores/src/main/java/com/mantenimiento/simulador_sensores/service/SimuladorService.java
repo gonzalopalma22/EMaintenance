@@ -2,6 +2,7 @@ package com.mantenimiento.simulador_sensores.service;
 
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -23,6 +24,9 @@ public class SimuladorService {
     private static final Logger log = LoggerFactory.getLogger(SimuladorService.class);
     private static final String EXCHANGE = "mantenimiento.lecturas.exchange";
     private static final String RK = "lectura.recibida";
+
+    // Tope de temperatura mientras un equipo está en falla (°C)
+    private static final double TEMP_MAXIMA_FALLA = 150.0;
 
     private final RabbitTemplate rabbitTemplate;
     private final List<String> equipos;
@@ -48,6 +52,7 @@ public class SimuladorService {
             double temp = temperaturas.get(equipo);
             if (Boolean.TRUE.equals(enFalla.get(equipo))) {
                 temp += 3 + rnd.nextDouble() * 2;          // degradación progresiva
+                temp = Math.min(temp, TEMP_MAXIMA_FALLA);  // tope
             } else {
                 temp = 80 + rnd.nextDouble() * 6 - 3;      // normal: 77 a 83
             }
@@ -78,8 +83,13 @@ public class SimuladorService {
         log.info("Equipo normalizado. equipo={}", equipo);
     }
 
+    /** Devuelve siempre todos los equipos, con true si están en falla y false si están normales. */
     public Map<String, Boolean> estado() {
-        return Map.copyOf(enFalla);
+        Map<String, Boolean> resultado = new LinkedHashMap<>();
+        for (String equipo : equipos) {
+            resultado.put(equipo, Boolean.TRUE.equals(enFalla.get(equipo)));
+        }
+        return resultado;
     }
 
     private void validar(String equipo) {
