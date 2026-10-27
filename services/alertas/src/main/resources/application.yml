@@ -43,3 +43,14 @@ management:
   endpoint:
     health:
       show-details: never
+alertas:
+  reglas:
+    temperatura:
+      umbral: 100.0
+      critico: 150.0
+    vibracion:
+      umbral: 7.0
+      critico: 11.0
+    presion:
+      umbral: 8.0
+      critico: 10.0

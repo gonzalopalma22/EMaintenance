@@ -14,7 +14,8 @@ public class DlqLogger {
 
     private static final Logger log = LoggerFactory.getLogger(DlqLogger.class);
 
-    @RabbitListener(queues = "mantenimiento.lecturas.dlq.audit.queue")
+    @RabbitListener(queues = "mantenimiento.lecturas.dlq.audit.queue",
+            containerFactory = "dlqListenerFactory")
     public void registrar(Message message) {
         Map<String, Object> h = message.getMessageProperties().getHeaders();
         Object death = h.get("x-death");

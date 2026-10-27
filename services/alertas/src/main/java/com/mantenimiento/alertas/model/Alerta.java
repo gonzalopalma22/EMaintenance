@@ -7,23 +7,28 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(name = "alertas")
+@Table(name = "alertas",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_alertas_lectura_tipo",
+                columnNames = {"lectura_event_id", "tipo"}))
 public class Alerta {
 
     @Id
     private UUID id;
 
-    @Column(nullable = false, unique = true)
-    private UUID lecturaEventId;    
+    @Column(name = "lectura_event_id", nullable = false)
+    private UUID lecturaEventId;
+
     @Column(nullable = false)
     private String equipoId;
 
     @Column(nullable = false)
     private String sensorId;
 
-    @Column(nullable = false)
+    @Column(name = "tipo", nullable = false)
     private String tipo;
 
     @Column(nullable = false)
@@ -36,7 +41,7 @@ public class Alerta {
     private String severidad;
 
     @Column(nullable = false)
-    private String estado;           
+    private String estado;
 
     @Column(nullable = false)
     private Instant generadaEn;

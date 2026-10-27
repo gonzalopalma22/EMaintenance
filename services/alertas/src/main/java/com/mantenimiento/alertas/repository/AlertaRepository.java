@@ -9,7 +9,7 @@ import com.mantenimiento.alertas.model.Alerta;
 
 public interface AlertaRepository extends JpaRepository<Alerta, UUID> {
 
-    boolean existsByLecturaEventId(UUID lecturaEventId);
+    boolean existsByLecturaEventIdAndTipo(UUID lecturaEventId, String tipo);
 
     List<Alerta> findTop100ByEstadoOrderByGeneradaEnDesc(String estado);
 

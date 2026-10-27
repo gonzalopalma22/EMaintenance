@@ -9,5 +9,6 @@ public record PrediccionEvent(
         Double score,
         Double delta,
         Boolean anomalia,
-        String modeloVersion
+        String modeloVersion,
+        String sensorCausante
 ) {}

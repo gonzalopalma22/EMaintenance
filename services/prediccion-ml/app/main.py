@@ -26,21 +26,27 @@ async def procesar(message: aio_pika.IncomingMessage, exchange: aio_pika.Exchang
         try:
             lectura = json.loads(message.body)
             equipo = lectura["equipoId"]
+            tipo = lectura["tipo"]
             valor = float(lectura["valor"])
-            if lectura.get("tipo") != "temperatura":
-                return
-            resultado = predictor.predecir(equipo, valor)
+            resultado = predictor.agregar(equipo, tipo, valor, lectura.get("eventId"))
         except (KeyError, ValueError, TypeError) as e:
             estado["rechazadas"] += 1
             log.warning("Lectura invalida -> DLQ. motivo=%s", e)
             raise  # sale del contexto: rechaza sin reencolar
 
+        if resultado is None:
+            return  # el ciclo de los 3 sensores aún no está completo
+
         evento = {
-            "lecturaEventId": lectura.get("eventId"),
+            "lecturaEventId": resultado["eventoId"],
             "equipoId": equipo,
-            "valor": valor,
+            "valor": resultado["valor"],
             "generadaEn": datetime.now(timezone.utc).isoformat(),
-            **resultado,
+            "score": resultado["score"],
+            "delta": resultado["delta"],
+            "anomalia": resultado["anomalia"],
+            "modeloVersion": resultado["modeloVersion"],
+            "sensorCausante": resultado["sensorCausante"],
         }
         await exchange.publish(
             aio_pika.Message(body=json.dumps(evento).encode(),
@@ -50,10 +56,10 @@ async def procesar(message: aio_pika.IncomingMessage, exchange: aio_pika.Exchang
         )
         estado["procesadas"] += 1
         if resultado["anomalia"]:
-            log.warning("ANOMALIA equipo=%s valor=%s score=%s",
-                        equipo, valor, resultado["score"])
+            log.warning("ANOMALIA equipo=%s sensor=%s valor=%s score=%s",
+                        equipo, resultado["sensorCausante"], resultado["valor"], resultado["score"])
         else:
-            log.info("OK equipo=%s valor=%s score=%s", equipo, valor, resultado["score"])
+            log.info("OK equipo=%s score=%s", equipo, resultado["score"])
 
 
 async def consumir():
@@ -93,7 +99,7 @@ async def estado_predicciones(usuario_token: dict = Depends(require_roles("admin
     # Si llega a esta línea, require_roles ya confirmó que el JWT de Microsoft es legítimo
     nombre = usuario_token.get("name", "Usuario")
     roles = usuario_token.get("roles", [])
-    
+
     return {
         "mensaje": f"Acceso autorizado para {nombre}",
         "roles": roles,

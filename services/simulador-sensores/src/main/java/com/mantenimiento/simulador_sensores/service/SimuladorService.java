@@ -25,15 +25,18 @@ public class SimuladorService {
     private static final String EXCHANGE = "mantenimiento.lecturas.exchange";
     private static final String RK = "lectura.recibida";
 
-    // Tope de temperatura mientras un equipo está en falla (°C)
-    private static final double TEMP_MAXIMA_FALLA = 150.0;
+    // Valores base (equipo sano) y valores máximos (falla total) de cada sensor
+    private static final double TEMP_NORMAL = 80.0, TEMP_FALLA = 160.0;   // °C
+    private static final double VIB_NORMAL = 3.0, VIB_FALLA = 14.0;       // mm/s
+    private static final double PRES_NORMAL = 6.0, PRES_FALLA = 12.0;     // bar
 
     private final RabbitTemplate rabbitTemplate;
     private final List<String> equipos;
     private final int porcentajeInvalidas;
 
-    // temperatura actual por equipo; los equipos en falla suben progresivamente
-    private final Map<String, Double> temperaturas = new ConcurrentHashMap<>();
+    // Nivel de degradación por equipo: 0.0 = sano, 1.0 = falla total.
+    // Los 3 sensores se calculan a partir de este mismo valor, por eso suben juntos.
+    private final Map<String, Double> degradacion = new ConcurrentHashMap<>();
     private final Map<String, Boolean> enFalla = new ConcurrentHashMap<>();
 
     public SimuladorService(RabbitTemplate rabbitTemplate,
@@ -42,32 +45,43 @@ public class SimuladorService {
         this.rabbitTemplate = rabbitTemplate;
         this.equipos = Arrays.stream(equipos.split(",")).map(String::trim).toList();
         this.porcentajeInvalidas = porcentajeInvalidas;
-        this.equipos.forEach(e -> temperaturas.put(e, 80.0));
+        this.equipos.forEach(e -> degradacion.put(e, 0.0));
     }
 
     @Scheduled(fixedDelayString = "${simulador.intervalo-ms}")
     public void generar() {
         var rnd = ThreadLocalRandom.current();
         for (String equipo : equipos) {
-            double temp = temperaturas.get(equipo);
+            double d = degradacion.get(equipo);
             if (Boolean.TRUE.equals(enFalla.get(equipo))) {
-                temp += 3 + rnd.nextDouble() * 2;          // degradación progresiva
-                temp = Math.min(temp, TEMP_MAXIMA_FALLA);  // tope
-            } else {
-                temp = 80 + rnd.nextDouble() * 6 - 3;      // normal: 77 a 83
+                d = Math.min(1.0, d + 0.04 + rnd.nextDouble() * 0.02);  // ~20 ciclos hasta la falla total
+                degradacion.put(equipo, d);
             }
-            temperaturas.put(equipo, temp);
 
-            double valor = rnd.nextInt(100) < porcentajeInvalidas ? 99999.0 : temp;
-            publicar(equipo, valor);
+            double temp = TEMP_NORMAL + d * (TEMP_FALLA - TEMP_NORMAL) + ruido(rnd.nextDouble(), 3.0);
+            double vib = VIB_NORMAL + d * (VIB_FALLA - VIB_NORMAL) + ruido(rnd.nextDouble(), 0.5);
+            double pres = PRES_NORMAL + d * (PRES_FALLA - PRES_NORMAL) + ruido(rnd.nextDouble(), 0.3);
+
+            publicar(equipo, "temp-motor", "temperatura", temp);
+            publicar(equipo, "vib-motor", "vibracion", vib);
+            publicar(equipo, "pres-hidraulica", "presion", pres);
         }
     }
 
-    private void publicar(String equipo, double valor) {
+    /** Ruido simétrico entre -amplitud y +amplitud. */
+    private double ruido(double r, double amplitud) {
+        return (r * 2 - 1) * amplitud;
+    }
+
+    private void publicar(String equipo, String sensorId, String tipo, double valor) {
+        double v = Math.max(0.0, valor);
+        if (ThreadLocalRandom.current().nextInt(100) < porcentajeInvalidas) {
+            v = 99999.0;   // lectura inválida a propósito, para probar la DLQ
+        }
         LecturaEvent e = new LecturaEvent(UUID.randomUUID(), 1, equipo,
-                "temp-motor", "temperatura", Math.round(valor * 10) / 10.0, Instant.now());
+                sensorId, tipo, Math.round(v * 100) / 100.0, Instant.now());
         rabbitTemplate.convertAndSend(EXCHANGE, RK, e);
-        log.info("Lectura enviada. equipo={} valor={}", equipo, e.valor());
+        log.info("Lectura enviada. equipo={} tipo={} valor={}", equipo, tipo, e.valor());
     }
 
     public void iniciarFalla(String equipo) {
@@ -79,7 +93,7 @@ public class SimuladorService {
     public void volverNormal(String equipo) {
         validar(equipo);
         enFalla.put(equipo, false);
-        temperaturas.put(equipo, 80.0);
+        degradacion.put(equipo, 0.0);
         log.info("Equipo normalizado. equipo={}", equipo);
     }
 
@@ -93,7 +107,7 @@ public class SimuladorService {
     }
 
     private void validar(String equipo) {
-        if (!temperaturas.containsKey(equipo)) {
+        if (!degradacion.containsKey(equipo)) {
             throw new IllegalArgumentException("Equipo desconocido: " + equipo);
         }
     }

@@ -1,0 +1,33 @@
+{
+  "version": "2",
+  "features": [
+    "temperatura",
+    "vibracion",
+    "presion",
+    "d_temperatura",
+    "d_vibracion",
+    "d_presion"
+  ],
+  "sensores": [
+    "temperatura",
+    "vibracion",
+    "presion"
+  ],
+  "umbral": -0.07961891017830258,
+  "media": {
+    "temperatura": 80.00200511322133,
+    "vibracion": 3.015964207450694,
+    "presion": 6.002589481373265,
+    "d_temperatura": -0.16761869978086197,
+    "d_vibracion": -0.022027027027027028,
+    "d_presion": -0.012136596055514976
+  },
+  "desviacion": {
+    "temperatura": 1.7569757301829017,
+    "vibracion": 0.29764396030689444,
+    "presion": 0.17515872083691977,
+    "d_temperatura": 4.501003049575925,
+    "d_vibracion": 0.6519638554663059,
+    "d_presion": 0.3722715628666915
+  }
+}

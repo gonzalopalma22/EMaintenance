@@ -15,7 +15,8 @@ public class DlqLogger {
 
     private static final Logger log = LoggerFactory.getLogger(DlqLogger.class);
 
-    @RabbitListener(queues = "mantenimiento.alertas-entrada.dlq.audit.queue")
+    @RabbitListener(queues = "mantenimiento.alertas-entrada.dlq.audit.queue",
+            containerFactory = "dlqListenerFactory")
     public void registrar(Message message) {
         Map<String, Object> h = message.getMessageProperties().getHeaders();
         String motivo = "desconocido";
@@ -32,8 +33,9 @@ public class DlqLogger {
                 cola, motivo, intentos, Instant.now());
     }
 
-    @RabbitListener(queues = "mantenimiento.alertas-prediccion.dlq.audit.queue")
+    @RabbitListener(queues = "mantenimiento.alertas-prediccion.dlq.audit.queue",
+            containerFactory = "dlqListenerFactory")
     public void registrarPrediccion(Message message) {
-    registrar(message);
-}
+        registrar(message);
+    }
 }

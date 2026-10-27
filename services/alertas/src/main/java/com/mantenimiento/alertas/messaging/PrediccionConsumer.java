@@ -37,23 +37,25 @@ public class PrediccionConsumer {
             return;
         }
         if (repository.existsByEquipoIdAndTipoAndEstado(p.equipoId(), TIPO, "ABIERTA")) {
-            return; 
+            return;
         }
-        if (repository.existsByLecturaEventId(p.lecturaEventId())) {
+        if (repository.existsByLecturaEventIdAndTipo(p.lecturaEventId(), TIPO)) {
             return;
         }
         UUID id = UUID.randomUUID();
         Instant ahora = Instant.now();
         double valor = p.valor() == null ? 0 : p.valor();
         double score = p.score() == null ? 0 : p.score();
+        String sensor = "modelo-ml/" + (p.sensorCausante() == null ? "desconocido" : p.sensorCausante());
 
-        repository.save(new Alerta(id, p.lecturaEventId(), p.equipoId(), "modelo-ml",
+        repository.save(new Alerta(id, p.lecturaEventId(), p.equipoId(), sensor,
                 TIPO, valor, score, "MEDIA", ahora));
 
         rabbitTemplate.convertAndSend("mantenimiento.eventos.exchange", "alerta.generada",
-                new AlertaEvent(id, p.lecturaEventId(), p.equipoId(), "modelo-ml",
+                new AlertaEvent(id, p.lecturaEventId(), p.equipoId(), sensor,
                         TIPO, valor, score, "MEDIA", ahora));
 
-        log.warn("ALERTA ANOMALIA. equipo={} valor={} score={}", p.equipoId(), valor, score);
+        log.warn("ALERTA ANOMALIA. equipo={} sensor={} valor={} score={}",
+                p.equipoId(), p.sensorCausante(), valor, score);
     }
 }
