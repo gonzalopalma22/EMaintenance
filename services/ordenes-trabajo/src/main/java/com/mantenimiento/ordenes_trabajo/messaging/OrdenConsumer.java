@@ -1,6 +1,7 @@
 package com.mantenimiento.ordenes_trabajo.messaging;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -17,12 +18,18 @@ public class OrdenConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(OrdenConsumer.class);
 
+    private static final Map<String, String> UNIDADES = Map.of(
+            "temperatura", "°C",
+            "vibracion", "mm/s",
+            "presion", "bar");
+
     private final OrdenTrabajoRepository repository;
 
     public OrdenConsumer(OrdenTrabajoRepository repository) {
         this.repository = repository;
     }
 
+   
     @RabbitListener(queues = "mantenimiento.ordenes-entrada.queue")
     public void recibir(AlertaEvent a) {
         if (a.alertaId() == null || a.equipoId() == null || a.severidad() == null) {
@@ -32,15 +39,25 @@ public class OrdenConsumer {
             log.info("Orden duplicada ignorada. alertaId={}", a.alertaId());
             return;
         }
-        String descripcion = String.format(
-                "Revisar %s en %s: %s %.1f supera el umbral %.1f",
-                a.sensorId(), a.equipoId(), a.tipo(), a.valor(), a.umbral());
 
         OrdenTrabajo orden = new OrdenTrabajo(UUID.randomUUID(), a.alertaId(),
-                a.equipoId(), descripcion, a.severidad(), Instant.now());
+                a.equipoId(), descripcion(a), a.severidad(), Instant.now());
         repository.save(orden);
 
         log.warn("ORDEN creada. ordenId={} alertaId={} equipo={} prioridad={}",
                 orden.getId(), a.alertaId(), a.equipoId(), a.severidad());
+    }
+
+    private static String descripcion(AlertaEvent a) {
+        if ("ANOMALIA".equals(a.tipo())) {
+            String sensor = a.sensorId() != null && a.sensorId().contains("/")
+                    ? a.sensorId().substring(a.sensorId().indexOf('/') + 1)
+                    : "varios sensores";
+            return String.format("Revisar %s: el modelo detectó un comportamiento anómalo (sensor más desviado: %s)",
+                    a.equipoId(), sensor);
+        }
+        String unidad = UNIDADES.getOrDefault(a.tipo(), "");
+        return String.format("Revisar %s en %s: %s en %.1f %s supera el umbral de %.1f %s",
+                a.sensorId(), a.equipoId(), a.tipo(), a.valor(), unidad, a.umbral(), unidad).trim();
     }
 }

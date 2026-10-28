@@ -14,7 +14,6 @@ services:
       retries: 12
     restart: unless-stopped
 
-  # Importa colas, exchanges y bindings una vez que RabbitMQ está listo
   rabbit-init:
     image: curlimages/curl:latest
     command:
@@ -112,6 +111,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      AZURE_API_CLIENT_SECRET: ${AZURE_API_CLIENT_SECRET}
     depends_on:
       rabbit-init:
         condition: service_completed_successfully

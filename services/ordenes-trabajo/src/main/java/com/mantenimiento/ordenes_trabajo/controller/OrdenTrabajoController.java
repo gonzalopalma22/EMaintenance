@@ -31,7 +31,7 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/ordenes")
 public class OrdenTrabajoController {
 
-    // estado actual -> estados permitidos
+  
     private static final Map<String, Set<String>> TRANSICIONES = Map.of(
             "ABIERTA", Set.of("ASIGNADA", "CERRADA"),
             "ASIGNADA", Set.of("EN_CURSO", "CERRADA"),
@@ -39,7 +39,7 @@ public class OrdenTrabajoController {
             "REALIZADA", Set.of("CERRADA", "EN_CURSO"),
             "CERRADA", Set.of());
 
-    // Transiciones que solo puede hacer un Admin (encargado de la zona)
+    
     private static final Set<String> SOLO_ADMIN = Set.of(
             "ABIERTA>ASIGNADA",
             "ABIERTA>CERRADA",
@@ -47,7 +47,7 @@ public class OrdenTrabajoController {
             "REALIZADA>CERRADA",
             "REALIZADA>EN_CURSO");
 
-    // Transiciones que solo puede hacer quien tiene la orden asignada (empleado)
+    
     private static final Set<String> SOLO_ASIGNADO = Set.of(
             "ASIGNADA>EN_CURSO",
             "EN_CURSO>REALIZADA");
@@ -78,7 +78,7 @@ public class OrdenTrabajoController {
                     : repository.findTop100ByEstadoOrderByCreadaEnDesc(estado);
         }
 
-        // Usuario: solo las órdenes asignadas a él
+        
         String usuario = jwt.getClaimAsString("preferred_username");
         if (usuario == null || usuario.isBlank()) {
             return List.of();
@@ -115,12 +115,12 @@ public class OrdenTrabajoController {
         String actual = o.getEstado();
         String nuevo = req.estado();
 
-        // 1. La transición debe existir (409)
+        
         if (!TRANSICIONES.getOrDefault(actual, Set.of()).contains(nuevo)) {
             throw new ConflictException("Transición no permitida: " + actual + " -> " + nuevo);
         }
 
-        // 2. Quién puede hacerla (403)
+        
         String clave = actual + ">" + nuevo;
 
         if (SOLO_ADMIN.contains(clave)) {
@@ -135,7 +135,7 @@ public class OrdenTrabajoController {
             }
         }
 
-        // 3. Solo al asignar se acepta asignadoA; en el resto se ignora
+       
         String asignadoA = null;
         if ("ASIGNADA".equals(nuevo)) {
             if (req.asignadoA() == null || req.asignadoA().isBlank()) {

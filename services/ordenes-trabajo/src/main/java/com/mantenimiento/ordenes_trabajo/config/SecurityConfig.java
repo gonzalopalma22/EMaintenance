@@ -23,6 +23,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/health/**").permitAll()
                 .requestMatchers(HttpMethod.DELETE, "/**").hasRole("Admin")
+                .requestMatchers(HttpMethod.GET, "/api/ordenes/tecnicos").hasRole("Admin")
                 .anyRequest().hasAnyRole("Usuario", "Admin")
             )
             .oauth2ResourceServer(oauth2 -> oauth2

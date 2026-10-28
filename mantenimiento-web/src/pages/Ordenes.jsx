@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useMsal } from "@azure/msal-react";
 import { useApi } from "../useApi";
 import DataTable from "../components/DataTable";
 
@@ -11,7 +10,10 @@ const ACCIONES_ADMIN = {
     { estado: "ASIGNADA", etiqueta: "Asignar" },
     { estado: "CERRADA", etiqueta: "Cancelar" },
   ],
-  ASIGNADA: [{ estado: "CERRADA", etiqueta: "Cancelar" }],
+  ASIGNADA: [
+    { estado: "ASIGNADA", etiqueta: "Reasignar" },
+    { estado: "CERRADA", etiqueta: "Cancelar" },
+  ],
   EN_CURSO: [],
   REALIZADA: [
     { estado: "CERRADA", etiqueta: "Cerrar" },
@@ -25,13 +27,15 @@ export default function Ordenes() {
   const apiRef = useRef(api);
   apiRef.current = api;
 
-  const { accounts } = useMsal();
-  const usuarioActual = accounts[0]?.username ?? "";
-
   const [estado, setEstado] = useState("");
   const [ordenes, setOrdenes] = useState([]);
   const [error, setError] = useState(null);
   const [trabajando, setTrabajando] = useState(null);
+
+  const [tecnicos, setTecnicos] = useState([]);
+  const [errorTecnicos, setErrorTecnicos] = useState(null);
+  const [asignando, setAsignando] = useState(null);
+  const [tecnicoSel, setTecnicoSel] = useState("");
 
   const cargar = useCallback(async () => {
     try {
@@ -50,22 +54,14 @@ export default function Ordenes() {
     return () => clearInterval(id);
   }, [cargar]);
 
-  const cambiarEstado = async (orden, nuevoEstado) => {
-    const body = { estado: nuevoEstado };
+  useEffect(() => {
+    apiRef.current
+      .get("/api/ordenes/tecnicos")
+      .then((d) => setTecnicos(Array.isArray(d) ? d : []))
+      .catch((e) => setErrorTecnicos(e));
+  }, []);
 
-    if (nuevoEstado === "ASIGNADA") {
-      const nombre = window.prompt(
-        "Asignar a (correo exacto del empleado):",
-        orden.asignadoA ?? usuarioActual
-      );
-      if (nombre === null) return;
-      if (!nombre.trim()) {
-        setError(new Error("Debes indicar a quién asignar la orden."));
-        return;
-      }
-      body.asignadoA = nombre.trim();
-    }
-
+  const enviarCambio = async (orden, body) => {
     setTrabajando(orden.id);
     try {
       await apiRef.current.patch(`/api/ordenes/${orden.id}/estado`, body);
@@ -75,6 +71,22 @@ export default function Ordenes() {
     } finally {
       setTrabajando(null);
     }
+  };
+
+  const accion = (orden, nuevoEstado) => {
+    if (nuevoEstado === "ASIGNADA") {
+      setAsignando(orden);
+      setTecnicoSel(orden.asignadoA ?? "");
+      return;
+    }
+    enviarCambio(orden, { estado: nuevoEstado });
+  };
+
+  const confirmarAsignacion = async () => {
+    if (!tecnicoSel) return;
+    const orden = asignando;
+    setAsignando(null);
+    await enviarCambio(orden, { estado: "ASIGNADA", asignadoA: tecnicoSel });
   };
 
   return (
@@ -95,7 +107,47 @@ export default function Ordenes() {
         <button onClick={cargar}>Actualizar</button>
       </div>
 
+      {asignando && (
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+            flexWrap: "wrap",
+            marginBottom: 12,
+            padding: 12,
+            border: "1px solid var(--border, #ccc)",
+            borderRadius: 8,
+          }}
+        >
+          <span>
+            Asignar orden de <strong>{asignando.equipoId}</strong> a:
+          </span>
+          <select value={tecnicoSel} onChange={(e) => setTecnicoSel(e.target.value)}>
+            <option value="">Selecciona un técnico</option>
+            {tecnicos.map((t) => (
+              <option key={t.correo} value={t.correo}>
+                {t.nombre ? `${t.nombre} (${t.correo})` : t.correo}
+              </option>
+            ))}
+          </select>
+          <button disabled={!tecnicoSel} onClick={confirmarAsignacion}>
+            Confirmar
+          </button>
+          <button onClick={() => setAsignando(null)}>Cancelar</button>
+          {tecnicos.length === 0 && !errorTecnicos && (
+            <span style={{ color: "var(--muted)" }}>No hay técnicos con el rol Usuario.</span>
+          )}
+        </div>
+      )}
+
+      {errorTecnicos && (
+        <p style={{ color: "crimson" }}>
+          No se pudo cargar la lista de técnicos: {errorTecnicos.message}
+        </p>
+      )}
       {error && <p style={{ color: "crimson" }}>Error: {error.message}</p>}
+
       <DataTable
         rows={ordenes}
         renderActions={(o) => {
@@ -105,9 +157,9 @@ export default function Ordenes() {
             <span style={{ display: "flex", gap: 6 }}>
               {acciones.map((a) => (
                 <button
-                  key={a.estado}
+                  key={a.etiqueta}
                   disabled={trabajando === o.id}
-                  onClick={() => cambiarEstado(o, a.estado)}
+                  onClick={() => accion(o, a.estado)}
                 >
                   {a.etiqueta}
                 </button>

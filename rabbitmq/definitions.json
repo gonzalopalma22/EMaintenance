@@ -36,7 +36,7 @@
       "arguments": {},
       "destination": "mantenimiento.ordenes-entrada.queue",
       "destination_type": "queue",
-      "routing_key": "alerta.generada",
+      "routing_key": "alerta.reconocida",
       "source": "mantenimiento.eventos.exchange",
       "vhost": "/"
     },

@@ -6,10 +6,8 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
-import com.mantenimiento.alertas.dto.AlertaEvent;
 import com.mantenimiento.alertas.dto.PrediccionEvent;
 import com.mantenimiento.alertas.model.Alerta;
 import com.mantenimiento.alertas.repository.AlertaRepository;
@@ -21,11 +19,9 @@ public class PrediccionConsumer {
     private static final String TIPO = "ANOMALIA";
 
     private final AlertaRepository repository;
-    private final RabbitTemplate rabbitTemplate;
 
-    public PrediccionConsumer(AlertaRepository repository, RabbitTemplate rabbitTemplate) {
+    public PrediccionConsumer(AlertaRepository repository) {
         this.repository = repository;
-        this.rabbitTemplate = rabbitTemplate;
     }
 
     @RabbitListener(queues = "mantenimiento.alertas-prediccion.queue")
@@ -43,17 +39,12 @@ public class PrediccionConsumer {
             return;
         }
         UUID id = UUID.randomUUID();
-        Instant ahora = Instant.now();
         double valor = p.valor() == null ? 0 : p.valor();
         double score = p.score() == null ? 0 : p.score();
         String sensor = "modelo-ml/" + (p.sensorCausante() == null ? "desconocido" : p.sensorCausante());
 
         repository.save(new Alerta(id, p.lecturaEventId(), p.equipoId(), sensor,
-                TIPO, valor, score, "MEDIA", ahora));
-
-        rabbitTemplate.convertAndSend("mantenimiento.eventos.exchange", "alerta.generada",
-                new AlertaEvent(id, p.lecturaEventId(), p.equipoId(), sensor,
-                        TIPO, valor, score, "MEDIA", ahora));
+                TIPO, valor, score, "MEDIA", Instant.now()));
 
         log.warn("ALERTA ANOMALIA. equipo={} sensor={} valor={} score={}",
                 p.equipoId(), p.sensorCausante(), valor, score);
