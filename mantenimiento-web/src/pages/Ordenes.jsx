@@ -5,15 +5,13 @@ import DataTable from "../components/DataTable";
 const REFRESCO_MS = 5000;
 const ESTADOS = ["ABIERTA", "ASIGNADA", "EN_CURSO", "REALIZADA", "CERRADA"];
 
+// Mismas transiciones que permite el backend para el Admin
 const ACCIONES_ADMIN = {
   ABIERTA: [
     { estado: "ASIGNADA", etiqueta: "Asignar" },
     { estado: "CERRADA", etiqueta: "Cancelar" },
   ],
-  ASIGNADA: [
-    { estado: "ASIGNADA", etiqueta: "Reasignar" },
-    { estado: "CERRADA", etiqueta: "Cancelar" },
-  ],
+  ASIGNADA: [{ estado: "CERRADA", etiqueta: "Cancelar" }],
   EN_CURSO: [],
   REALIZADA: [
     { estado: "CERRADA", etiqueta: "Cerrar" },
@@ -22,6 +20,13 @@ const ACCIONES_ADMIN = {
   CERRADA: [],
 };
 
+const fecha = (v) => (v ? new Date(v).toLocaleString("es-CL") : "—");
+
+function mensajeDe(e) {
+  const m = /"detail":"([^"]*)"/.exec(e?.message ?? "");
+  return m ? m[1] : (e?.message ?? "Error desconocido");
+}
+
 export default function Ordenes() {
   const api = useApi();
   const apiRef = useRef(api);
@@ -29,7 +34,8 @@ export default function Ordenes() {
 
   const [estado, setEstado] = useState("");
   const [ordenes, setOrdenes] = useState([]);
-  const [error, setError] = useState(null);
+  const [errorCarga, setErrorCarga] = useState(null);
+  const [errorAccion, setErrorAccion] = useState(null);
   const [trabajando, setTrabajando] = useState(null);
 
   const [tecnicos, setTecnicos] = useState([]);
@@ -42,9 +48,9 @@ export default function Ordenes() {
       const qs = estado ? `?estado=${encodeURIComponent(estado)}` : "";
       const data = await apiRef.current.get(`/api/ordenes${qs}`);
       setOrdenes(Array.isArray(data) ? data : []);
-      setError(null);
+      setErrorCarga(null);
     } catch (e) {
-      setError(e);
+      setErrorCarga(e);
     }
   }, [estado]);
 
@@ -61,22 +67,44 @@ export default function Ordenes() {
       .catch((e) => setErrorTecnicos(e));
   }, []);
 
+  const nombrePorCorreo = new Map(
+    tecnicos.map((t) => [String(t.correo).toLowerCase(), t.nombre])
+  );
+
+  const columnas = [
+    { key: "creadaEn", titulo: "Creada", render: fecha },
+    { key: "equipoId", titulo: "Equipo" },
+    { key: "descripcion", titulo: "Descripción" },
+    { key: "prioridad", titulo: "Prioridad" },
+    { key: "estado", titulo: "Estado" },
+    {
+      key: "asignadoA",
+      titulo: "Asignada a",
+      render: (v) => (v ? nombrePorCorreo.get(String(v).toLowerCase()) || v : "—"),
+    },
+    { key: "cerradaEn", titulo: "Cerrada", render: fecha },
+  ];
+
   const enviarCambio = async (orden, body) => {
     setTrabajando(orden.id);
+    setErrorAccion(null);
     try {
       await apiRef.current.patch(`/api/ordenes/${orden.id}/estado`, body);
       await cargar();
     } catch (e) {
-      setError(e);
+      setErrorAccion(e);
     } finally {
       setTrabajando(null);
     }
   };
 
-  const accion = (orden, nuevoEstado) => {
+  const accion = (orden, nuevoEstado, etiqueta) => {
     if (nuevoEstado === "ASIGNADA") {
       setAsignando(orden);
       setTecnicoSel(orden.asignadoA ?? "");
+      return;
+    }
+    if (etiqueta === "Cancelar" && !window.confirm("¿Cancelar esta orden? Pasará a CERRADA.")) {
       return;
     }
     enviarCambio(orden, { estado: nuevoEstado });
@@ -116,12 +144,12 @@ export default function Ordenes() {
             flexWrap: "wrap",
             marginBottom: 12,
             padding: 12,
-            border: "1px solid var(--border, #ccc)",
+            border: "1px solid var(--border)",
             borderRadius: 8,
           }}
         >
           <span>
-            Asignar orden de <strong>{asignando.equipoId}</strong> a:
+            Asignar la orden de <strong>{asignando.equipoId}</strong> a:
           </span>
           <select value={tecnicoSel} onChange={(e) => setTecnicoSel(e.target.value)}>
             <option value="">Selecciona un técnico</option>
@@ -134,7 +162,7 @@ export default function Ordenes() {
           <button disabled={!tecnicoSel} onClick={confirmarAsignacion}>
             Confirmar
           </button>
-          <button onClick={() => setAsignando(null)}>Cancelar</button>
+          <button onClick={() => setAsignando(null)}>Volver</button>
           {tecnicos.length === 0 && !errorTecnicos && (
             <span style={{ color: "var(--muted)" }}>No hay técnicos con el rol Usuario.</span>
           )}
@@ -143,13 +171,22 @@ export default function Ordenes() {
 
       {errorTecnicos && (
         <p style={{ color: "crimson" }}>
-          No se pudo cargar la lista de técnicos: {errorTecnicos.message}
+          No se pudo cargar la lista de técnicos: {mensajeDe(errorTecnicos)}
         </p>
       )}
-      {error && <p style={{ color: "crimson" }}>Error: {error.message}</p>}
+      {errorCarga && (
+        <p style={{ color: "crimson" }}>No se pudieron cargar las órdenes: {mensajeDe(errorCarga)}</p>
+      )}
+      {errorAccion && (
+        <p style={{ color: "crimson" }}>
+          No se pudo actualizar la orden: {mensajeDe(errorAccion)}{" "}
+          <button onClick={() => setErrorAccion(null)}>Cerrar</button>
+        </p>
+      )}
 
       <DataTable
         rows={ordenes}
+        columns={columnas}
         renderActions={(o) => {
           const acciones = ACCIONES_ADMIN[o.estado] ?? [];
           if (acciones.length === 0) return "—";
@@ -159,7 +196,7 @@ export default function Ordenes() {
                 <button
                   key={a.etiqueta}
                   disabled={trabajando === o.id}
-                  onClick={() => accion(o, a.estado)}
+                  onClick={() => accion(o, a.estado, a.etiqueta)}
                 >
                   {a.etiqueta}
                 </button>

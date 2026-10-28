@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useMsal } from "@azure/msal-react";
 import { useApi } from "../useApi";
 import DataTable from "../components/DataTable";
 
@@ -10,30 +9,45 @@ const ACCIONES_EMPLEADO = {
   EN_CURSO: [{ estado: "REALIZADA", etiqueta: "Marcar realizada" }],
 };
 
+const fecha = (v) => (v ? new Date(v).toLocaleString("es-CL") : "—");
+
+function mensajeDe(e) {
+  const m = /"detail":"([^"]*)"/.exec(e?.message ?? "");
+  return m ? m[1] : (e?.message ?? "Error desconocido");
+}
+
+const COLUMNAS = [
+  { key: "creadaEn", titulo: "Creada", render: fecha },
+  { key: "equipoId", titulo: "Equipo" },
+  { key: "descripcion", titulo: "Descripción" },
+  { key: "prioridad", titulo: "Prioridad" },
+  { key: "estado", titulo: "Estado" },
+  { key: "cerradaEn", titulo: "Cerrada", render: fecha },
+];
+
 export default function MisOrdenes() {
   const api = useApi();
   const apiRef = useRef(api);
   apiRef.current = api;
 
-  const { accounts } = useMsal();
-  const usuario = (accounts[0]?.username ?? "").trim().toLowerCase();
-
   const [ordenes, setOrdenes] = useState([]);
-  const [error, setError] = useState(null);
+  const [errorCarga, setErrorCarga] = useState(null);
+  const [errorAccion, setErrorAccion] = useState(null);
   const [trabajando, setTrabajando] = useState(null);
+  const [cargado, setCargado] = useState(false);
 
   const cargar = useCallback(async () => {
     try {
+      // El backend ya devuelve solo las órdenes asignadas al usuario del token
       const data = await apiRef.current.get("/api/ordenes");
-      const todas = Array.isArray(data) ? data : [];
-      setOrdenes(
-        todas.filter((o) => (o.asignadoA ?? "").trim().toLowerCase() === usuario)
-      );
-      setError(null);
+      setOrdenes(Array.isArray(data) ? data : []);
+      setErrorCarga(null);
     } catch (e) {
-      setError(e);
+      setErrorCarga(e);
+    } finally {
+      setCargado(true);
     }
-  }, [usuario]);
+  }, []);
 
   useEffect(() => {
     cargar();
@@ -43,13 +57,14 @@ export default function MisOrdenes() {
 
   const cambiarEstado = async (orden, nuevoEstado) => {
     setTrabajando(orden.id);
+    setErrorAccion(null);
     try {
       await apiRef.current.patch(`/api/ordenes/${orden.id}/estado`, {
         estado: nuevoEstado,
       });
       await cargar();
     } catch (e) {
-      setError(e);
+      setErrorAccion(e);
     } finally {
       setTrabajando(null);
     }
@@ -62,10 +77,20 @@ export default function MisOrdenes() {
         <button onClick={cargar}>Actualizar</button>
       </div>
 
-      {error && <p style={{ color: "crimson" }}>Error: {error.message}</p>}
-      {ordenes.length === 0 && !error && <p>No tienes órdenes asignadas.</p>}
+      {errorCarga && (
+        <p style={{ color: "crimson" }}>No se pudieron cargar tus órdenes: {mensajeDe(errorCarga)}</p>
+      )}
+      {errorAccion && (
+        <p style={{ color: "crimson" }}>
+          No se pudo actualizar la orden: {mensajeDe(errorAccion)}{" "}
+          <button onClick={() => setErrorAccion(null)}>Cerrar</button>
+        </p>
+      )}
+      {cargado && ordenes.length === 0 && !errorCarga && <p>No tienes órdenes asignadas.</p>}
+
       <DataTable
         rows={ordenes}
+        columns={COLUMNAS}
         renderActions={(o) => {
           const acciones = ACCIONES_EMPLEADO[o.estado] ?? [];
           if (acciones.length === 0) {
