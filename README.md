@@ -6,3 +6,5 @@ Stack: Spring Boot (Java 21, Maven), RabbitMQ, PostgreSQL, ML en Python, Microso
 ## Levantar entorno local
 1. Copiar `.env.example` a `.env` y ajustar valores.
 2. `docker compose up -d`
+
+
