@@ -16,7 +16,7 @@ public class OrdenTrabajo {
     private UUID id;
 
     @Column(nullable = false, unique = true)
-    private UUID alertaId;          
+    private UUID alertaId;
 
     @Column(nullable = false)
     private String equipoId;
@@ -25,10 +25,10 @@ public class OrdenTrabajo {
     private String descripcion;
 
     @Column(nullable = false)
-    private String prioridad;       
+    private String prioridad;
 
     @Column(nullable = false)
-    private String estado;          
+    private String estado;
 
     private String asignadoA;
 
@@ -53,7 +53,7 @@ public class OrdenTrabajo {
     public void cambiarEstado(String nuevo, String asignadoA) {
         this.estado = nuevo;
         if (asignadoA != null) this.asignadoA = asignadoA;
-        if ("CERRADA".equals(nuevo)) this.cerradaEn = Instant.now();
+        if ("CERRADA".equals(nuevo) || "CANCELADA".equals(nuevo)) this.cerradaEn = Instant.now();
     }
 
     public UUID getId() { return id; }

@@ -3,21 +3,22 @@ import { useApi } from "../useApi";
 import DataTable from "../components/DataTable";
 
 const REFRESCO_MS = 5000;
-const ESTADOS = ["ABIERTA", "ASIGNADA", "EN_CURSO", "REALIZADA", "CERRADA"];
+const ESTADOS = ["ABIERTA", "ASIGNADA", "EN_CURSO", "REALIZADA", "CERRADA", "CANCELADA"];
 
-// Mismas transiciones que permite el backend para el Admin
+
 const ACCIONES_ADMIN = {
   ABIERTA: [
     { estado: "ASIGNADA", etiqueta: "Asignar" },
-    { estado: "CERRADA", etiqueta: "Cancelar" },
+    { estado: "CANCELADA", etiqueta: "Cancelar" },
   ],
-  ASIGNADA: [{ estado: "CERRADA", etiqueta: "Cancelar" }],
+  ASIGNADA: [{ estado: "CANCELADA", etiqueta: "Cancelar" }],
   EN_CURSO: [],
   REALIZADA: [
     { estado: "CERRADA", etiqueta: "Cerrar" },
     { estado: "EN_CURSO", etiqueta: "Devolver" },
   ],
   CERRADA: [],
+  CANCELADA: [],
 };
 
 const fecha = (v) => (v ? new Date(v).toLocaleString("es-CL") : "—");
@@ -82,7 +83,7 @@ export default function Ordenes() {
       titulo: "Asignada a",
       render: (v) => (v ? nombrePorCorreo.get(String(v).toLowerCase()) || v : "—"),
     },
-    { key: "cerradaEn", titulo: "Cerrada", render: fecha },
+    { key: "cerradaEn", titulo: "Finalizada", render: fecha },
   ];
 
   const enviarCambio = async (orden, body) => {
@@ -98,13 +99,16 @@ export default function Ordenes() {
     }
   };
 
-  const accion = (orden, nuevoEstado, etiqueta) => {
+  const accion = (orden, nuevoEstado) => {
     if (nuevoEstado === "ASIGNADA") {
       setAsignando(orden);
       setTecnicoSel(orden.asignadoA ?? "");
       return;
     }
-    if (etiqueta === "Cancelar" && !window.confirm("¿Cancelar esta orden? Pasará a CERRADA.")) {
+    if (
+      nuevoEstado === "CANCELADA" &&
+      !window.confirm("¿Cancelar esta orden? Quedará como CANCELADA y no se puede reabrir.")
+    ) {
       return;
     }
     enviarCambio(orden, { estado: nuevoEstado });
@@ -196,7 +200,7 @@ export default function Ordenes() {
                 <button
                   key={a.etiqueta}
                   disabled={trabajando === o.id}
-                  onClick={() => accion(o, a.estado, a.etiqueta)}
+                  onClick={() => accion(o, a.estado)}
                 >
                   {a.etiqueta}
                 </button>

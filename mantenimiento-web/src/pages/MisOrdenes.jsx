@@ -22,7 +22,7 @@ const COLUMNAS = [
   { key: "descripcion", titulo: "Descripción" },
   { key: "prioridad", titulo: "Prioridad" },
   { key: "estado", titulo: "Estado" },
-  { key: "cerradaEn", titulo: "Cerrada", render: fecha },
+  { key: "cerradaEn", titulo: "Finalizada", render: fecha },
 ];
 
 export default function MisOrdenes() {
@@ -38,7 +38,6 @@ export default function MisOrdenes() {
 
   const cargar = useCallback(async () => {
     try {
-      // El backend ya devuelve solo las órdenes asignadas al usuario del token
       const data = await apiRef.current.get("/api/ordenes");
       setOrdenes(Array.isArray(data) ? data : []);
       setErrorCarga(null);

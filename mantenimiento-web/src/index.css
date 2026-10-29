@@ -283,6 +283,11 @@ tbody tr:hover {
   background: #dff5e8;
   color: #15683a;
 }
+.badge-cancelada {
+  background: #e4e7ec;
+  color: #475467;
+  text-decoration: line-through;
+}
 .badge-alta,
 .badge-critica {
   background: #fdecea;

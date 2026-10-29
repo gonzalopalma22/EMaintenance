@@ -31,23 +31,24 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/ordenes")
 public class OrdenTrabajoController {
 
-  
+    // estado actual -> estados permitidos
     private static final Map<String, Set<String>> TRANSICIONES = Map.of(
-            "ABIERTA", Set.of("ASIGNADA", "CERRADA"),
-            "ASIGNADA", Set.of("EN_CURSO", "CERRADA"),
+            "ABIERTA", Set.of("ASIGNADA", "CANCELADA"),
+            "ASIGNADA", Set.of("EN_CURSO", "CANCELADA"),
             "EN_CURSO", Set.of("REALIZADA"),
             "REALIZADA", Set.of("CERRADA", "EN_CURSO"),
-            "CERRADA", Set.of());
+            "CERRADA", Set.of(),
+            "CANCELADA", Set.of());
 
-    
+    // Transiciones que solo puede hacer un Admin (encargado de la zona)
     private static final Set<String> SOLO_ADMIN = Set.of(
             "ABIERTA>ASIGNADA",
-            "ABIERTA>CERRADA",
-            "ASIGNADA>CERRADA",
+            "ABIERTA>CANCELADA",
+            "ASIGNADA>CANCELADA",
             "REALIZADA>CERRADA",
             "REALIZADA>EN_CURSO");
 
-    
+    // Transiciones que solo puede hacer quien tiene la orden asignada (empleado)
     private static final Set<String> SOLO_ASIGNADO = Set.of(
             "ASIGNADA>EN_CURSO",
             "EN_CURSO>REALIZADA");
@@ -78,7 +79,7 @@ public class OrdenTrabajoController {
                     : repository.findTop100ByEstadoOrderByCreadaEnDesc(estado);
         }
 
-        
+        // Usuario: solo las órdenes asignadas a él
         String usuario = jwt.getClaimAsString("preferred_username");
         if (usuario == null || usuario.isBlank()) {
             return List.of();
@@ -135,7 +136,6 @@ public class OrdenTrabajoController {
             }
         }
 
-       
         String asignadoA = null;
         if ("ASIGNADA".equals(nuevo)) {
             if (req.asignadoA() == null || req.asignadoA().isBlank()) {
