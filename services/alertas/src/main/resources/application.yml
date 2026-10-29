@@ -43,7 +43,9 @@ management:
   endpoint:
     health:
       show-details: never
+
 alertas:
+  enfriamiento: 10m
   reglas:
     temperatura:
       umbral: 100.0

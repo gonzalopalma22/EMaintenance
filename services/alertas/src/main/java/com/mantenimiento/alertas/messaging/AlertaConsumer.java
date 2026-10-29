@@ -52,11 +52,15 @@ public class AlertaConsumer {
             log.info("Ya hay alerta de {} abierta. equipo={}", e.tipo(), e.equipoId());
             return;
         }
+        Instant desde = Instant.now().minus(props.enfriamiento());
+        if (repository.existsByEquipoIdAndTipoAndGeneradaEnAfter(e.equipoId(), e.tipo(), desde)) {
+            log.info("Alerta de {} en enfriamiento. equipo={}", e.tipo(), e.equipoId());
+            return;
+        }
 
         String severidad = e.valor() > regla.critico() ? "CRITICA" : "ALTA";
         UUID alertaId = UUID.randomUUID();
 
-        // La alerta solo se guarda. La orden de trabajo se crea cuando un Admin la reconoce.
         repository.save(new Alerta(alertaId, e.eventId(), e.equipoId(), e.sensorId(),
                 e.tipo(), e.valor(), regla.umbral(), severidad, Instant.now()));
 

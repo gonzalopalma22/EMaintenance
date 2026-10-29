@@ -1,5 +1,6 @@
 package com.mantenimiento.alertas.repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -16,4 +17,6 @@ public interface AlertaRepository extends JpaRepository<Alerta, UUID> {
     List<Alerta> findTop100ByOrderByGeneradaEnDesc();
 
     boolean existsByEquipoIdAndTipoAndEstado(String equipoId, String tipo, String estado);
+
+    boolean existsByEquipoIdAndTipoAndGeneradaEnAfter(String equipoId, String tipo, Instant desde);
 }

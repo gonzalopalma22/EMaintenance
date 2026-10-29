@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
+import com.mantenimiento.alertas.config.AlertaProperties;
 import com.mantenimiento.alertas.dto.PrediccionEvent;
 import com.mantenimiento.alertas.model.Alerta;
 import com.mantenimiento.alertas.repository.AlertaRepository;
@@ -19,9 +20,11 @@ public class PrediccionConsumer {
     private static final String TIPO = "ANOMALIA";
 
     private final AlertaRepository repository;
+    private final AlertaProperties props;
 
-    public PrediccionConsumer(AlertaRepository repository) {
+    public PrediccionConsumer(AlertaRepository repository, AlertaProperties props) {
         this.repository = repository;
+        this.props = props;
     }
 
     @RabbitListener(queues = "mantenimiento.alertas-prediccion.queue")
@@ -38,6 +41,11 @@ public class PrediccionConsumer {
         if (repository.existsByLecturaEventIdAndTipo(p.lecturaEventId(), TIPO)) {
             return;
         }
+        Instant desde = Instant.now().minus(props.enfriamiento());
+        if (repository.existsByEquipoIdAndTipoAndGeneradaEnAfter(p.equipoId(), TIPO, desde)) {
+            return;
+        }
+
         UUID id = UUID.randomUUID();
         double valor = p.valor() == null ? 0 : p.valor();
         double score = p.score() == null ? 0 : p.score();
