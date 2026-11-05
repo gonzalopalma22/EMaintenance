@@ -248,16 +248,6 @@ Copia los archivos generados a `services/prediccion-ml/modelo/` y reconstruye la
 4. Estimación de vida útil restante (RUL) con regresión sobre ventanas hasta la falla.
 5. Despliegue en AWS.
 
-## Guía para desplegar en AWS (pendiente)
-
-Plan previsto con una instancia **EC2** y Docker Compose:
-
-- **Red:** abrir solo `22` (tu IP), `80` y `443`. No exponer `8080`, `5672`, `15672` ni `5432`.
-- **HTTPS:** MSAL solo funciona en HTTPS (salvo en `localhost`), y una página HTTPS no puede llamar a una API HTTP. El frontend y el gateway deben servirse bajo HTTPS.
-- **Entra ID:** agregar la URL de producción como redirect URI del registro SPA.
-- **CORS:** poner la misma URL en `CORS_ORIGIN`.
-- **Compose en producción:** levantar con `docker compose -f docker-compose.yml up -d --build`, para no cargar el override de desarrollo y que RabbitMQ y PostgreSQL queden sin puertos publicados.
-- **Secretos:** el `.env` se crea directamente en el servidor y nunca se sube al repositorio.
 
 ## Autor
 
