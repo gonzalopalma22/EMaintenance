@@ -238,7 +238,6 @@ Copia los archivos generados a `services/prediccion-ml/modelo/` y reconstruye la
 - No hay deduplicación por falla sostenida: cada lectura que supera un umbral genera su alerta (la unicidad es por lectura y tipo).
 - `GET /api/lecturas` devuelve las últimas 100 lecturas sin filtrar por tipo de sensor.
 - En `admin-rabbitmq`, un `Usuario` puede crear colas, exchanges y bindings y reprocesar DLQ; solo `DELETE` está restringido a `Admin`.
-- El despliegue en AWS no está hecho; ver la guía de abajo.
 
 ## Hoja de ruta
 
