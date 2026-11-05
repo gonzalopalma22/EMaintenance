@@ -246,7 +246,6 @@ Copia los archivos generados a `services/prediccion-ml/modelo/` y reconstruye la
 2. Asignación de órdenes con un desplegable de técnicos (usuarios con rol `Usuario`) leído desde Entra ID con Microsoft Graph.
 3. Deduplicar alertas abiertas por equipo.
 4. Estimación de vida útil restante (RUL) con regresión sobre ventanas hasta la falla.
-5. Despliegue en AWS.
 
 
 ## Autor
