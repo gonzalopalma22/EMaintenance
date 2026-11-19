@@ -259,7 +259,19 @@
     }
   ],
   "parameters": [],
-  "policies": [],
+  "policies": [
+    {
+      "vhost": "/",
+      "name": "ha-all",
+      "pattern": "^mantenimiento\\.",
+      "apply-to": "queues",
+      "definition": {
+        "ha-mode": "all",
+        "ha-sync-mode": "automatic"
+      },
+      "priority": 0
+    }
+  ],
   "rabbitmq_version": "3.13.7",
   "rabbit_version": "3.13.7",
   "exchanges": [

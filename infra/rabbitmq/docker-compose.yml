@@ -1,0 +1,108 @@
+name: emaintenance-rabbitmq
+
+x-rabbit: &rabbit
+  image: rabbitmq:3.13-management
+  restart: unless-stopped
+  networks: [emaintenance-net]
+
+x-rabbit-env: &rabbit-env
+  RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
+  RABBITMQ_DEFAULT_PASS: ${RABBIT_PASS}
+  RABBITMQ_ERLANG_COOKIE: ${RABBIT_ERLANG_COOKIE:-emaintenance-dev-cookie}
+
+services:
+  rabbit-1:
+    <<: *rabbit
+    container_name: rabbit-1
+    hostname: rabbit-1
+    environment:
+      <<: *rabbit-env
+      RABBITMQ_NODENAME: rabbit@rabbit-1
+    volumes:
+      - ./rabbitmq.conf:/etc/rabbitmq/conf.d/20-cluster.conf:ro
+      - rabbit1_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+
+  rabbit-2:
+    <<: *rabbit
+    container_name: rabbit-2
+    hostname: rabbit-2
+    depends_on:
+      rabbit-1:
+        condition: service_healthy
+    environment:
+      <<: *rabbit-env
+      RABBITMQ_NODENAME: rabbit@rabbit-2
+    volumes:
+      - ./rabbitmq.conf:/etc/rabbitmq/conf.d/20-cluster.conf:ro
+      - rabbit2_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+
+  # Punto de entrada único al clúster: los servicios siguen usando el host "rabbitmq"
+  haproxy:
+    image: haproxy:2.9
+    container_name: rabbitmq-lb
+    depends_on:
+      rabbit-1:
+        condition: service_healthy
+      rabbit-2:
+        condition: service_healthy
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+    networks:
+      emaintenance-net:
+        aliases:
+          - rabbitmq
+    restart: unless-stopped
+
+  # Importa colas, exchanges, bindings y la política de replicación
+  rabbit-init:
+    image: curlimages/curl:latest
+    container_name: rabbit-init
+    depends_on:
+      rabbit-1:
+        condition: service_healthy
+      rabbit-2:
+        condition: service_healthy
+    command:
+      - "-sf"
+      - "--retry"
+      - "10"
+      - "--retry-delay"
+      - "3"
+      - "--retry-all-errors"
+      - "-u"
+      - "${RABBIT_USER}:${RABBIT_PASS}"
+      - "-X"
+      - "POST"
+      - "-H"
+      - "Content-Type: application/json"
+      - "--data-binary"
+      - "@/defs/definitions.json"
+      - "http://rabbit-1:15672/api/definitions"
+    volumes:
+      - ../../rabbitmq/definitions.json:/defs/definitions.json:ro
+    networks: [emaintenance-net]
+    restart: "no"
+
+networks:
+  emaintenance-net:
+    external: true
+    name: emaintenance-net
+
+volumes:
+  rabbit1_data:
+  rabbit2_data:
