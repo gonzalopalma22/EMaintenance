@@ -1,0 +1,37 @@
+server:
+  port: 8088
+  address: 127.0.0.1
+
+spring:
+  application:
+    name: analitica
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://login.microsoftonline.com/${AZURE_TENANT_ID}/v2.0
+          audiences: ${AZURE_API_CLIENT_ID}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
+    consumer:
+      group-id: analitica
+      auto-offset-reset: earliest
+    producer:
+      acks: all
+      properties:
+        enable.idempotence: true
+
+analitica:
+  topic-lecturas: telemetria.lecturas
+  topic-resumen: analitica.resumen
+  ventana-segundos: 300
+  intervalo-resumen-ms: 30000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never 
