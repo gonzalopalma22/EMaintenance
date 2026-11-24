@@ -1,6 +1,7 @@
 package com.mantenimiento.admin_kafka.controller;
 
 import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.common.errors.GroupIdNotFoundException;
 import org.apache.kafka.common.errors.InvalidConfigurationException;
 import org.apache.kafka.common.errors.InvalidPartitionsException;
 import org.apache.kafka.common.errors.InvalidReplicationFactorException;
@@ -27,6 +28,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(UnknownTopicOrPartitionException.class)
     public ProblemDetail noExiste(UnknownTopicOrPartitionException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "El tópico no existe");
+    }
+
+    @ExceptionHandler(GroupIdNotFoundException.class)
+    public ProblemDetail grupoNoExiste(GroupIdNotFoundException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
     @ExceptionHandler(TopicExistsException.class)

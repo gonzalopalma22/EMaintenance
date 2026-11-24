@@ -93,7 +93,8 @@ services:
     networks: [emaintenance-net]
     restart: unless-stopped
 
-  # Crea los tópicos base una vez que los tres brokers están sanos
+  # Crea los tópicos base y les aplica sus parámetros de administración.
+  # Es repetible: si el tópico ya existe, solo actualiza su configuración.
   kafka-init:
     image: confluentinc/cp-kafka:7.6.1
     container_name: kafka-init
@@ -108,14 +109,27 @@ services:
     command:
       - |
         set -e
-        for t in telemetria.lecturas analitica.predicciones analitica.resumen; do
+
+        # crear <tópico> <retención en ms> <política de limpieza>
+        crear() {
           kafka-topics --bootstrap-server kafka-1:29092 --create --if-not-exists \
-            --topic "$$t" --partitions 3 --replication-factor 3 \
-            --config retention.ms=604800000
-          kafka-topics --bootstrap-server kafka-1:29092 --create --if-not-exists \
-            --topic "$$t.DLT" --partitions 3 --replication-factor 3 \
-            --config retention.ms=1209600000
-        done
+            --topic "$$1" --partitions 3 --replication-factor 3
+          kafka-configs --bootstrap-server kafka-1:29092 --alter \
+            --entity-type topics --entity-name "$$1" \
+            --add-config "retention.ms=$$2,cleanup.policy=$$3,min.insync.replicas=2,max.message.bytes=1048576"
+        }
+
+        # Lecturas de sensores: se conservan 7 días para poder releerlas y recalcular
+        crear telemetria.lecturas 604800000 delete
+        # Resúmenes: se publica uno cada 30 s y solo importa lo reciente (1 día)
+        crear analitica.resumen 86400000 delete
+        # Predicciones: seguimiento de corto plazo (3 días)
+        crear analitica.predicciones 259200000 delete
+        # Mensajes fallidos: 14 días para dar tiempo a revisarlos
+        crear telemetria.lecturas.DLT 1209600000 delete
+        crear analitica.resumen.DLT 1209600000 delete
+        crear analitica.predicciones.DLT 1209600000 delete
+
         kafka-topics --bootstrap-server kafka-1:29092 --list
     networks: [emaintenance-net]
     restart: "no"

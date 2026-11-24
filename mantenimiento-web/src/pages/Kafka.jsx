@@ -27,7 +27,9 @@ export default function Kafka() {
 
   const [cluster, setCluster] = useState(null);
   const [topics, setTopics] = useState([]);
+  const [grupos, setGrupos] = useState([]);
   const [detalle, setDetalle] = useState(null);
+  const [grupo, setGrupo] = useState(null);
   const [error, setError] = useState(null);
   const [info, setInfo] = useState(null);
   const [trabajando, setTrabajando] = useState(false);
@@ -39,12 +41,15 @@ export default function Kafka() {
 
   const cargar = useCallback(async () => {
     try {
-      const [c, t] = await Promise.all([
+      const [c, t, g] = await Promise.all([
         apiRef.current.get("/api/kafka/cluster"),
         apiRef.current.get("/api/kafka/topics"),
+        // si falla el listado de grupos no debe romper el resto del panel
+        apiRef.current.get("/api/kafka/groups").catch(() => []),
       ]);
       setCluster(c);
       setTopics(Array.isArray(t) ? t : []);
+      setGrupos(Array.isArray(g) ? g : []);
       setError(null);
     } catch (e) {
       setError(e);
@@ -77,6 +82,14 @@ export default function Kafka() {
       setDetalle(d);
       setMasParticiones("");
       setCfg({ clave: "", valor: "" });
+    });
+
+  const verGrupo = (id) =>
+    ejecutar(async () => {
+      const g = await apiRef.current.get(
+        `/api/kafka/groups/${encodeURIComponent(id)}`
+      );
+      setGrupo(g);
     });
 
   const crear = (ev) => {
@@ -137,6 +150,26 @@ export default function Kafka() {
     { key: "leader", titulo: "Líder (broker)" },
     { key: "replicas", titulo: "Réplicas", render: unir },
     { key: "isr", titulo: "ISR (sincronizadas)", render: unir },
+  ];
+
+  const colsGrupos = [
+    { key: "groupId", titulo: "Consumer group" },
+    { key: "miembros", titulo: "Miembros" },
+    { key: "estado", titulo: "Estado" },
+  ];
+
+  const colsMiembros = [
+    { key: "clientId", titulo: "Client ID" },
+    { key: "host", titulo: "Host" },
+    { key: "particiones", titulo: "Particiones asignadas", render: unir },
+  ];
+
+  const colsOffsets = [
+    { key: "topic", titulo: "Tópico" },
+    { key: "particion", titulo: "Partición" },
+    { key: "offset", titulo: "Offset confirmado" },
+    { key: "finLog", titulo: "Fin del log" },
+    { key: "lag", titulo: "Lag" },
   ];
 
   const filasConfig = Object.entries(detalle?.configs ?? {}).map(([config, valor]) => ({
@@ -294,6 +327,59 @@ export default function Kafka() {
               Guardar configuración
             </button>
           </div>
+        </div>
+      )}
+
+      <h3 style={{ marginTop: 32 }}>
+        Consumer groups <button onClick={cargar}>Actualizar</button>
+      </h3>
+      {grupos.length === 0 ? (
+        <p style={{ color: "var(--muted)" }}>No hay consumer groups registrados.</p>
+      ) : (
+        <DataTable
+          rows={grupos.map((g) => ({ ...g, id: g.groupId }))}
+          columns={colsGrupos}
+          renderActions={(g) => (
+            <button disabled={trabajando} onClick={() => verGrupo(g.groupId)}>
+              Detalle
+            </button>
+          )}
+        />
+      )}
+
+      {grupo && (
+        <div style={{ marginTop: 24 }}>
+          <h3>
+            Grupo <code>{grupo.groupId}</code>{" "}
+            <button disabled={trabajando} onClick={() => verGrupo(grupo.groupId)}>
+              Refrescar
+            </button>{" "}
+            <button onClick={() => setGrupo(null)}>Cerrar</button>
+          </h3>
+          <p style={{ color: "var(--muted)" }}>
+            Estado: {grupo.estado} · Coordinador: {grupo.coordinador} · Asignador:{" "}
+            {grupo.asignador} · Lag total: <strong>{grupo.lagTotal}</strong>
+          </p>
+
+          <h4>Miembros</h4>
+          {grupo.miembros.length === 0 ? (
+            <p style={{ color: "var(--muted)" }}>Sin consumidores conectados.</p>
+          ) : (
+            <DataTable
+              rows={grupo.miembros.map((m) => ({ ...m, id: m.consumerId }))}
+              columns={colsMiembros}
+            />
+          )}
+
+          <h4>Offsets y lag por partición</h4>
+          {grupo.offsets.length === 0 ? (
+            <p style={{ color: "var(--muted)" }}>El grupo aún no ha confirmado offsets.</p>
+          ) : (
+            <DataTable
+              rows={grupo.offsets.map((o) => ({ ...o, id: `${o.topic}-${o.particion}` }))}
+              columns={colsOffsets}
+            />
+          )}
         </div>
       )}
     </section>
