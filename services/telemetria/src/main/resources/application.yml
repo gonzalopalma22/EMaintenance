@@ -36,9 +36,17 @@ spring:
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
     producer:
+      client-id: telemetria-producer
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: com.mantenimiento.telemetria.messaging.LecturaEventSerializer
       acks: all
       properties:
+        # Sin duplicados ni reordenamientos aunque haya reintentos
         enable.idempotence: true
+        # Agrupa mensajes unos milisegundos y los comprime para ahorrar red
+        linger.ms: 20
+        compression.type: gzip
+        # Si Kafka no responde, falla rápido y no bloquea el consumo de RabbitMQ
         max.block.ms: 3000
         request.timeout.ms: 5000
         delivery.timeout.ms: 10000
