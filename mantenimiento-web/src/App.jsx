@@ -14,6 +14,8 @@ import {
   IconHerramienta,
   IconSimulador,
   IconRabbit,
+  IconKafka,
+  IconAnalitica,
   IconLogo,
 } from "./icons";
 import Lecturas from "./pages/Lecturas";
@@ -22,14 +24,18 @@ import Ordenes from "./pages/Ordenes";
 import MisOrdenes from "./pages/MisOrdenes";
 import Simulador from "./pages/Simulador";
 import Rabbit from "./pages/Rabbit";
+import Analitica from "./pages/Analitica";
+import Kafka from "./pages/Kafka";
 
 const PAGINAS = {
   misOrdenes: { titulo: "Mis órdenes", Icono: IconOrdenes, componente: MisOrdenes, roles: ["Usuario"] },
   lecturas: { titulo: "Lecturas", Icono: IconLecturas, componente: Lecturas, roles: ["Usuario", "Admin"] },
+  analitica: { titulo: "Analítica", Icono: IconAnalitica, componente: Analitica, roles: ["Usuario", "Admin"] },
   alertas: { titulo: "Alertas", Icono: IconAlertas, componente: Alertas, roles: ["Usuario", "Admin"] },
   ordenes: { titulo: "Órdenes", Icono: IconHerramienta, componente: Ordenes, roles: ["Admin"] },
   simulador: { titulo: "Simulador", Icono: IconSimulador, componente: Simulador, roles: ["Admin"] },
   rabbit: { titulo: "RabbitMQ", Icono: IconRabbit, componente: Rabbit, roles: ["Admin"] },
+  kafka: { titulo: "Kafka", Icono: IconKafka, componente: Kafka, roles: ["Admin"] },
 };
 
 function iniciales(nombre) {

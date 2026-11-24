@@ -62,6 +62,21 @@ export const IconRabbit = (p) => (
   </Svg>
 );
 
+export const IconKafka = (p) => (
+  <Svg {...p}>
+    <circle cx="6" cy="12" r="2" />
+    <circle cx="18" cy="5" r="2" />
+    <circle cx="18" cy="19" r="2" />
+    <path d="M8 12h3l5-6M11 12l5 6" />
+  </Svg>
+);
+
+export const IconAnalitica = (p) => (
+  <Svg {...p}>
+    <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+  </Svg>
+);
+
 export const IconLogo = (p) => (
   <Svg {...p}>
     <circle cx="12" cy="12" r="3" />
