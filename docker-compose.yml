@@ -1,45 +1,36 @@
+include:
+  - path: infra/rabbitmq/docker-compose.yml
+    env_file: .env
+  - path: infra/kafka/docker-compose.yml
+    env_file: .env
+  - path: infra/kafka-ui/docker-compose.yml
+    env_file: .env
+
+x-app: &app
+  networks: [emaintenance-net]
+  restart: unless-stopped
+
+x-spring: &spring-comun
+  SERVER_ADDRESS: 0.0.0.0
+  AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+  AZURE_API_CLIENT_ID: ${AZURE_API_CLIENT_ID}
+  RABBIT_HOST: rabbitmq
+  RABBIT_USER: ${RABBIT_USER}
+  RABBIT_PASS: ${RABBIT_PASS}
+
+x-db: &db
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  POSTGRES_DB: ${POSTGRES_DB}
+  POSTGRES_USER: ${POSTGRES_USER}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+x-kafka: &kafka
+  KAFKA_BOOTSTRAP_SERVERS: kafka-1:29092,kafka-2:29092,kafka-3:29092
+
 services:
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASS}
-    volumes:
-      - rabbit_data:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-    restart: unless-stopped
-
-  rabbit-init:
-    image: curlimages/curl:latest
-    command:
-      - "-sf"
-      - "--retry"
-      - "10"
-      - "--retry-delay"
-      - "3"
-      - "--retry-all-errors"
-      - "-u"
-      - "${RABBIT_USER}:${RABBIT_PASS}"
-      - "-X"
-      - "POST"
-      - "-H"
-      - "Content-Type: application/json"
-      - "--data-binary"
-      - "@/defs/definitions.json"
-      - "http://rabbitmq:15672/api/definitions"
-    volumes:
-      - ./rabbitmq/definitions.json:/defs/definitions.json:ro
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    restart: "no"
-
   postgres:
+    <<: *app
     image: postgres:16
     container_name: postgres
     environment:
@@ -53,82 +44,64 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    restart: unless-stopped
 
   admin-rabbitmq:
+    <<: *app
     build: ./services/admin-rabbitmq
-    environment: &spring-comun
-      SERVER_ADDRESS: 0.0.0.0
-      AZURE_TENANT_ID: ${AZURE_TENANT_ID}
-      AZURE_API_CLIENT_ID: ${AZURE_API_CLIENT_ID}
-      RABBIT_HOST: rabbitmq
-      RABBIT_USER: ${RABBIT_USER}
-      RABBIT_PASS: ${RABBIT_PASS}
+    environment:
+      <<: *spring-comun
       RABBIT_MGMT_URL: http://rabbitmq:15672
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-    restart: unless-stopped
+      rabbit-init:
+        condition: service_completed_successfully
 
   telemetria:
+    <<: *app
     build: ./services/telemetria
     environment:
-      <<: *spring-comun
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      <<: [*spring-comun, *db, *kafka]
     depends_on:
       rabbit-init:
         condition: service_completed_successfully
+      kafka-init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
-    restart: unless-stopped
 
   alertas:
+    <<: *app
     build: ./services/alertas
     environment:
-      <<: *spring-comun
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      <<: [*spring-comun, *db]
     depends_on:
       rabbit-init:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
-    restart: unless-stopped
 
   ordenes-trabajo:
+    <<: *app
     build: ./services/ordenes-trabajo
     environment:
-      <<: *spring-comun
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      <<: [*spring-comun, *db]
       AZURE_API_CLIENT_SECRET: ${AZURE_API_CLIENT_SECRET}
     depends_on:
       rabbit-init:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
-    restart: unless-stopped
 
   simulador-sensores:
+    <<: *app
     build: ./services/simulador-sensores
     environment:
       <<: *spring-comun
     depends_on:
       rabbit-init:
         condition: service_completed_successfully
-    restart: unless-stopped
 
   prediccion-ml:
+    <<: *app
     build: ./services/prediccion-ml
     environment:
       AZURE_TENANT_ID: ${AZURE_TENANT_ID}
@@ -139,11 +112,31 @@ services:
     depends_on:
       rabbit-init:
         condition: service_completed_successfully
-    restart: unless-stopped
+
+  admin-kafka:
+    <<: *app
+    build: ./services/admin-kafka
+    environment:
+      <<: [*spring-comun, *kafka]
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+
+  analitica:
+    <<: *app
+    build: ./services/analitica
+    environment:
+      <<: [*spring-comun, *kafka]
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
 
   api-gateway:
+    <<: *app
     build: ./services/api-gateway
     environment:
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+      AZURE_API_CLIENT_ID: ${AZURE_API_CLIENT_ID}
       CORS_ORIGIN: ${CORS_ORIGIN}
       ADMIN_RABBITMQ_URL: http://admin-rabbitmq:8081
       TELEMETRIA_URL: http://telemetria:8082
@@ -151,6 +144,8 @@ services:
       ORDENES_URL: http://ordenes-trabajo:8084
       SIMULADOR_URL: http://simulador-sensores:8085
       PREDICCION_URL: http://prediccion-ml:8086
+      ADMIN_KAFKA_URL: http://admin-kafka:8087
+      ANALITICA_URL: http://analitica:8088
     ports:
       - "8080:8080"
     depends_on:
@@ -160,8 +155,13 @@ services:
       - ordenes-trabajo
       - simulador-sensores
       - prediccion-ml
-    restart: unless-stopped
+      - admin-kafka
+      - analitica
 
 volumes:
-  rabbit_data:
   pg_data:
+
+networks:
+  emaintenance-net:
+    external: true
+    name: emaintenance-net

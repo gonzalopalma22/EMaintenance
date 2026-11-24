@@ -25,12 +25,14 @@ public class LecturaConsumer {
     private final LecturaRepository repository;
     private final Validator validator;
     private final RabbitTemplate rabbitTemplate;
+    private final KafkaLecturaPublisher kafkaPublisher;
 
     public LecturaConsumer(LecturaRepository repository, Validator validator,
-                           RabbitTemplate rabbitTemplate) {
+                           RabbitTemplate rabbitTemplate, KafkaLecturaPublisher kafkaPublisher) {
         this.repository = repository;
         this.validator = validator;
         this.rabbitTemplate = rabbitTemplate;
+        this.kafkaPublisher = kafkaPublisher;
     }
 
     @RabbitListener(queues = "mantenimiento.lecturas.queue")
@@ -51,6 +53,9 @@ public class LecturaConsumer {
                 e.tipo(), e.valor(), e.timestamp()));
         log.info("Lectura guardada. eventId={} equipo={} tipo={} valor={}",
                 e.eventId(), e.equipoId(), e.tipo(), e.valor());
+
+        // Copia de la lectura al flujo de Kafka (analítica). Nunca interrumpe el flujo de RabbitMQ.
+        kafkaPublisher.publicar(e);
 
         rabbitTemplate.convertAndSend(EVENTOS_EXCHANGE, LECTURA_GUARDADA_RK, e);
         log.info("Evento lectura.guardada publicado. eventId={}", e.eventId());
