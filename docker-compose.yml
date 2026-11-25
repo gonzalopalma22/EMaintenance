@@ -72,9 +72,11 @@ services:
     <<: *app
     build: ./services/alertas
     environment:
-      <<: [*spring-comun, *db]
+      <<: [*spring-comun, *db, *kafka]
     depends_on:
       rabbit-init:
+        condition: service_completed_successfully
+      kafka-init:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
